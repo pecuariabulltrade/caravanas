@@ -815,6 +815,7 @@ async function pintarSalida(zona){
   const exRes=el('div'); ex.append(exRes);
   zona.append(ex);
   const res=el('div'); zona.append(res);
+  estadoSalida(res);   // muestra la grilla de lo que ya tiene la salida
 
   async function subir(nums){
     try{
@@ -887,12 +888,26 @@ async function pintarSalida(zona){
   };
 }
 async function estadoSalida(res){
+  if(!SALIDA) return;
   try{
-    const {data}=await sb.from('v_caravanas').select('numero,categoria').eq('salida_id',SALIDA.id);
+    const {data}=await sb.from('v_caravanas')
+      .select('numero,categoria,lote,fecha_ingreso,fecha_40,fecha_90,estado')
+      .eq('salida_id',SALIDA.id).order('numero');
+    const filas=data||[];
     const box=el('div',{className:'tarjeta'});
-    box.append(el('div',{className:'mut'},`En esta salida: ${data.length} de ${SALIDA.objetivo}`));
+    box.append(el('h3',{},`Caravanas en el pre-despacho: ${filas.length} de ${SALIDA.objetivo}`));
+    if(filas.length){
+      const tb=el('table');
+      tb.append(el('thead',{},filaTH(['Caravana','Categoría','Lote','Activación','40 días','90 días'])));
+      const tbody=el('tbody');
+      filas.forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.categoria||'—'),td(f.lote||'—'),
+        td(f.fecha_ingreso||'—','num'),td(f.fecha_40||'—','num'),td(f.fecha_90||'—','num'))));
+      tb.append(tbody); box.append(tb);
+    }else{
+      box.append(el('div',{className:'mut'},'Todavía no cargaste ninguna caravana a esta salida.'));
+    }
     res.append(box);
-  }catch(e){}
+  }catch(e){ res.append(el('div',{className:'aviso'},'No pude leer las caravanas de la salida: '+errMsg(e))); }
 }
 
 // ======================================================================
