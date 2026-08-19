@@ -396,6 +396,34 @@ function vGuia(cont){
 
   const salida=el('div'); cont.append(salida);
 
+  const histBox=el('div',{style:'margin-top:1.2rem'}); cont.append(histBox);
+  async function verHistGuias(){
+    histBox.innerHTML='';
+    const card=el('div',{className:'tarjeta'});
+    card.append(el('h3',{},'Historial de entradas (cierres de guía)'));
+    try{
+      const h=(await rpc('historial_guias',{p_limite:100}))||[];
+      if(!h.length){ card.append(el('div',{className:'mut'},'Todavía no hay cierres cargados.')); }
+      else{
+        const tb=el('table');
+        tb.append(el('thead',{},filaTH(['Fecha','N° guía','Origen','Categorías','Cantidad','Cargada',''])));
+        const tbody=el('tbody');
+        h.forEach(g=>{
+          const bDel=el('button',{className:'gris'},'Eliminar');
+          bDel.onclick=async()=>{
+            if(!confirm(`¿Eliminar el cierre "${g.numero}"? Las ${g.cantidad} caravanas vuelven a vírgenes.`))return;
+            try{ await rpc('eliminar_guia',{p_guia_id:g.id}); verHistGuias(); }catch(e){alert(errMsg(e));}
+          };
+          const tdb=el('td'); tdb.append(bDel);
+          tbody.append(el('tr',{},td(g.fecha,'num'),td(g.numero),td(g.origen||'—'),td(g.categorias||'—'),td(g.cantidad,'num'),td(g.creada||'—'),tdb));
+        });
+        tb.append(tbody); card.append(tb);
+      }
+    }catch(e){ card.append(el('div',{className:'aviso'},'No pude leer el historial: '+errMsg(e))); }
+    histBox.append(card);
+  }
+  verHistGuias();
+
   function grupos(){
     if(cat.value==='MIXTO'){
       return CATS.map(c=>({categoria:c,cantidad:Number(mInp[c].value||0)})).filter(g=>g.cantidad>0);
@@ -425,6 +453,7 @@ function vGuia(cont){
       box.append(tablaGrupos(r.grupos,'guardadas'));
       salida.append(box);
       cant.value='';CATS.forEach(c=>mInp[c].value='');
+      verHistGuias();
     }catch(e){ salida.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); }
     bGuardar.disabled=false; bGuardar.textContent='Guardar cierre';
   };
@@ -682,6 +711,7 @@ async function abrirCaja(rotulo,tr){
 //  VISTA · BAJAS
 // ======================================================================
 let SALIDA=null;
+let refHistSalidas=null;
 function vBajas(cont){
   cont.append(el('h2',{},'Bajas (salidas)'));
   cont.append(el('div',{className:'mut',style:'margin-bottom:.7rem'},
@@ -701,11 +731,48 @@ function vBajas(cont){
   t.append(b); cont.append(t);
   const zona=el('div'); cont.append(zona);
 
+  const histBox=el('div',{style:'margin-top:1.2rem'}); cont.append(histBox);
+  async function verHistSalidas(){
+    histBox.innerHTML='';
+    const card=el('div',{className:'tarjeta'});
+    card.append(el('h3',{},'Historial de salidas (bajas)'));
+    try{
+      const h=(await rpc('historial_salidas',{p_limite:100}))||[];
+      if(!h.length){ card.append(el('div',{className:'mut'},'Todavía no hay salidas cargadas.')); }
+      else{
+        const tb=el('table');
+        tb.append(el('thead',{},filaTH(['Fecha','N°','Destino','Objetivo','Cargadas','Estado',''])));
+        const tbody=el('tbody');
+        h.forEach(s=>{
+          const acc=el('div',{className:'fila',style:'gap:.3rem'});
+          if(s.estado==='preparacion'){
+            const bCont=el('button',{className:'sec'},'Continuar');
+            bCont.onclick=()=>{ SALIDA={id:s.id,numero:s.numero,objetivo:s.objetivo}; pintarSalida(zona); window.scrollTo(0,0); };
+            acc.append(el('div',{style:'flex:0 0 auto'},bCont));
+          }
+          const bDel=el('button',{className:'gris'},'Eliminar');
+          bDel.onclick=async()=>{
+            if(!confirm(`¿Eliminar la salida "${s.numero}"? Las ${s.cantidad} caravanas vuelven a activas.`))return;
+            try{ await rpc('eliminar_salida',{p_salida_id:s.id}); if(SALIDA&&SALIDA.id===s.id){SALIDA=null;zona.innerHTML='';} verHistSalidas(); }catch(e){alert(errMsg(e));}
+          };
+          acc.append(el('div',{style:'flex:0 0 auto'},bDel));
+          const tdacc=el('td'); tdacc.append(acc);
+          tbody.append(el('tr',{},td(s.fecha,'num'),td(s.numero),td(s.destino||'—'),td(s.objetivo,'num'),td(s.cantidad,'num'),
+            tdChip(s.estado==='confirmada'?'baja confirmada':'en preparación', s.estado==='confirmada'?'ok':'warn'),tdacc));
+        });
+        tb.append(tbody); card.append(tb);
+      }
+    }catch(e){ card.append(el('div',{className:'aviso'},'No pude leer el historial: '+errMsg(e))); }
+    histBox.append(card);
+  }
+  refHistSalidas=verHistSalidas;
+  verHistSalidas();
+
   b.onclick=async()=>{
     try{
       const r=await rpc('crear_salida',{p_numero:num.value||'S/N',p_fecha:fecha.value,p_destino:dest.value,p_objetivo:Number(obj.value||0)});
       SALIDA={id:r.id,numero:num.value||'S/N',objetivo:Number(obj.value||0)};
-      pintarSalida(zona);
+      pintarSalida(zona); verHistSalidas();
     }catch(e){zona.innerHTML='';zona.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
   };
 }
@@ -815,6 +882,7 @@ async function pintarSalida(zona){
     try{ const r=await rpc('confirmar_salida',{p_salida_id:SALIDA.id});
       res.innerHTML='';res.append(el('div',{className:'tarjeta'},el('h3',{},'Baja confirmada ✔'),el('div',{},`${r.confirmadas} caravanas dadas de baja.`)));
       SALIDA=null;
+      if(refHistSalidas) refHistSalidas();
     }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
   };
 }
