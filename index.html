@@ -724,13 +724,29 @@ async function pintarSalida(zona){
                el('div',{style:'flex:0 0 auto'},bSub));
   t.append(filaX,el('div',{style:'margin-top:.5rem'},el('label',{},'o pegar'),ta));
 
-  // completar
-  const filaC=el('div',{className:'fila',style:'margin-top:.8rem;align-items:end'});
-  const bComp=el('button',{className:'sec'},'Completar del stock');
-  const bConf=el('button',{},'Confirmar baja');
-  filaC.append(el('div',{style:'flex:0 0 auto'},bComp),el('div',{style:'flex:0 0 auto'},bConf),el('div'));
-  t.append(filaC);
+  const bConf=el('button',{style:'margin-top:.8rem'},'Confirmar baja');
+  t.append(el('div',{},bConf));
   zona.append(t);
+
+  // Extraer del stock: filtrar → prevista → tildar → extraer al pre-despacho
+  const ex=el('div',{className:'tarjeta'});
+  ex.append(el('h3',{},'Extraer del stock'),
+    el('div',{className:'mut',style:'margin-bottom:.5rem'},
+      'Filtrá, mirá la prevista y tildá las que querés mandar al pre-despacho.'));
+  const ef=el('div',{className:'fila'});
+  const eCat=el('select');
+  [['','Todas las categorías'],['Vaca','Vaca'],['Toro','Toro'],['Macho','Macho'],['Hembra','Hembra']].forEach(([v,tx])=>eCat.append(el('option',{value:v},tx)));
+  const eLote=el('input',{placeholder:'Lote/caja (opcional)'});
+  const ePlazo=el('select');
+  [['','Cualquier antigüedad'],['40','40 días cumplidos'],['90','90 días cumplidos']].forEach(([v,tx])=>ePlazo.append(el('option',{value:v},tx)));
+  const eCant=el('input',{type:'number',min:'1',placeholder:'Máx (opcional)'});
+  ef.append(el('div',{},el('label',{},'Categoría'),eCat),el('div',{},el('label',{},'Lote'),eLote),
+            el('div',{},el('label',{},'Días cumplidos'),ePlazo),el('div',{},el('label',{},'Cantidad'),eCant));
+  ex.append(ef);
+  const bPrevS=el('button',{className:'sec',style:'margin-top:.6rem'},'Ver prevista');
+  ex.append(el('div',{},bPrevS));
+  const exRes=el('div'); ex.append(exRes);
+  zona.append(ex);
   const res=el('div'); zona.append(res);
 
   async function subir(nums){
@@ -750,11 +766,49 @@ async function pintarSalida(zona){
     if(!nums.length){res.innerHTML='';res.append(el('div',{className:'aviso'},'Subí un archivo o pegá los números.'));return;}
     subir(nums);
   };
-  bComp.onclick=async()=>{
-    try{ const r=await rpc('completar_salida',{p_salida_id:SALIDA.id});
-      res.innerHTML='';res.append(el('div',{className:'tarjeta'},el('div',{},`Completadas del stock: ${r.tomadas} (faltaban ${r.pedidas})`)));
-      await estadoSalida(res);
-    }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  bPrevS.onclick=async()=>{
+    exRes.innerHTML=''; bPrevS.disabled=true; bPrevS.innerHTML='<span class="spin"></span>';
+    try{
+      const p=await rpc('previsualizar_salida',{p_categoria:eCat.value,p_lote:eLote.value,p_plazo:ePlazo.value,p_cantidad:Number(eCant.value||0)});
+      const box=el('div',{className:'tarjeta'});
+      box.append(el('div',{className:'mut',style:'margin-bottom:.4rem'},
+        `Coinciden ${fmt(p.total)} · mostrando ${p.mostradas}`+(p.truncado?' (limitado; usá filtros o cantidad)':'')));
+      const acc=el('div',{className:'fila',style:'margin-bottom:.5rem'});
+      const bTodos=el('button',{className:'gris'},'Marcar todas');
+      const bNada=el('button',{className:'gris'},'Desmarcar todas');
+      const bExtraer=el('button',{},'Extraer seleccionadas → salida');
+      acc.append(el('div',{style:'flex:0 0 auto'},bTodos),el('div',{style:'flex:0 0 auto'},bNada),
+                 el('div',{style:'flex:0 0 auto'},bExtraer),el('div'));
+      box.append(acc);
+      const tb=el('table');
+      tb.append(el('thead',{},filaTH(['✓','Caravana','Categoría','Lote','Activación','40 días','90 días'])));
+      const tbody=el('tbody');
+      (p.items||[]).forEach(f=>{
+        const cb=el('input',{type:'checkbox',value:f.numero}); cb.checked=true;
+        const tdc=el('td'); tdc.append(cb);
+        tbody.append(el('tr',{},tdc,td(f.numero,'num'),td(f.categoria||'—'),td(f.lote||'—'),
+          td(f.fecha_activacion||'—','num'),td(f.fecha_40||'—','num'),td(f.fecha_90||'—','num')));
+      });
+      tb.append(tbody); box.append(tb);
+      bTodos.onclick=()=>box.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true);
+      bNada.onclick=()=>box.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
+      bExtraer.onclick=async()=>{
+        const nums=[...box.querySelectorAll('input[type=checkbox]:checked')].map(c=>c.value);
+        if(!nums.length){alert('Tildá al menos una caravana.');return;}
+        if(!confirm('¿Extraer '+nums.length+' caravanas a la salida?'))return;
+        bExtraer.disabled=true; bExtraer.innerHTML='<span class="spin"></span>';
+        try{
+          const r=await rpc('sumar_a_salida',{p_salida_id:SALIDA.id,p_numeros:nums});
+          res.innerHTML='';
+          res.append(el('div',{className:'tarjeta'},
+            el('div',{},`Extraídas a la salida: ${r.tomadas}`+(r.ya_en_esta?` · ya estaban ${r.ya_en_esta}`:''))));
+          await estadoSalida(res);
+          bPrevS.onclick();   // refrescar la prevista (ya no aparecen las extraídas)
+        }catch(e){alert(errMsg(e));}
+      };
+      exRes.append(box);
+    }catch(e){exRes.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+    bPrevS.disabled=false; bPrevS.textContent='Ver prevista';
   };
   bConf.onclick=async()=>{
     if(!confirm('¿Confirmar la baja? Las caravanas de la salida quedan dadas de baja.'))return;
