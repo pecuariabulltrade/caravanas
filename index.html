@@ -400,7 +400,8 @@ function vGuia(cont){
   async function verHistGuias(){
     histBox.innerHTML='';
     const card=el('div',{className:'tarjeta'});
-    card.append(el('h3',{},'Historial de entradas (cierres de guía)'));
+    card.append(el('h3',{},'Historial de entradas (cierres de guía)'),
+      el('div',{className:'mut',style:'margin-bottom:.4rem'},'Tocá una entrada para ver las caravanas que ingresaron.'));
     try{
       const h=(await rpc('historial_guias',{p_limite:100}))||[];
       if(!h.length){ card.append(el('div',{className:'mut'},'Todavía no hay cierres cargados.')); }
@@ -410,12 +411,14 @@ function vGuia(cont){
         const tbody=el('tbody');
         h.forEach(g=>{
           const bDel=el('button',{className:'gris'},'Eliminar');
-          bDel.onclick=async()=>{
+          bDel.onclick=async(e)=>{ e.stopPropagation();
             if(!confirm(`¿Eliminar el cierre "${g.numero}"? Las ${g.cantidad} caravanas vuelven a vírgenes.`))return;
-            try{ await rpc('eliminar_guia',{p_guia_id:g.id}); verHistGuias(); }catch(e){alert(errMsg(e));}
+            try{ await rpc('eliminar_guia',{p_guia_id:g.id}); verHistGuias(); }catch(err){alert(errMsg(err));}
           };
           const tdb=el('td'); tdb.append(bDel);
-          tbody.append(el('tr',{},td(g.fecha,'num'),td(g.numero),td(g.origen||'—'),td(g.categorias||'—'),td(g.cantidad,'num'),td(g.creada||'—'),tdb));
+          const tr=el('tr',{style:'cursor:pointer'},td(g.fecha,'num'),td(g.numero),td(g.origen||'—'),td(g.categorias||'—'),td(g.cantidad,'num'),td(g.creada||'—'),tdb);
+          tr.onclick=()=>detalleCaravanasEnFila(tr,'guia_id',g.id,7);
+          tbody.append(tr);
         });
         tb.append(tbody); card.append(tb);
       }
@@ -707,6 +710,36 @@ async function abrirCaja(rotulo,tr){
   tr.parentNode.insertBefore(trd,tr.nextSibling);
 }
 
+// Despliega debajo de una fila la grilla de caravanas de esa guía o salida.
+async function detalleCaravanasEnFila(tr, columna, valor, colspan){
+  const next=tr.nextSibling;
+  if(next && next.__detalle){ next.remove(); return; }
+  let data;
+  try{
+    const r=await sb.from('v_caravanas')
+      .select('numero,categoria,lote,fecha_ingreso,fecha_40,fecha_90,estado')
+      .eq(columna,valor).order('numero');
+    data=r.data||[];
+  }catch(e){ return; }
+  const trd=el('tr'); trd.__detalle=true;
+  const tdd=el('td'); tdd.colSpan=colspan||7;
+  const inner=el('div',{className:'tarjeta',style:'margin:.3rem 0;background:#f8fafc'});
+  inner.append(el('h3',{},(columna==='guia_id'?'Ingresaron ':'Salieron ')+data.length+' caravanas'));
+  if(data.length){
+    const tb=el('table');
+    tb.append(el('thead',{},filaTH(['Caravana','Categoría','Lote','Activación','40 días','90 días'])));
+    const tbody=el('tbody');
+    data.slice(0,500).forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.categoria||'—'),td(f.lote||'—'),
+      td(f.fecha_ingreso||'—','num'),td(f.fecha_40||'—','num'),td(f.fecha_90||'—','num'))));
+    tb.append(tbody); inner.append(tb);
+    if(data.length>500) inner.append(el('div',{className:'mut',style:'margin-top:.3rem'},'… y '+(data.length-500)+' más'));
+  }else{
+    inner.append(el('div',{className:'mut'},'Sin caravanas asociadas.'));
+  }
+  tdd.append(inner); trd.append(tdd);
+  tr.parentNode.insertBefore(trd,tr.nextSibling);
+}
+
 // ======================================================================
 //  VISTA · BAJAS
 // ======================================================================
@@ -735,7 +768,8 @@ function vBajas(cont){
   async function verHistSalidas(){
     histBox.innerHTML='';
     const card=el('div',{className:'tarjeta'});
-    card.append(el('h3',{},'Historial de salidas (bajas)'));
+    card.append(el('h3',{},'Historial de salidas (bajas)'),
+      el('div',{className:'mut',style:'margin-bottom:.4rem'},'Tocá una salida para ver las caravanas que salieron.'));
     try{
       const h=(await rpc('historial_salidas',{p_limite:100}))||[];
       if(!h.length){ card.append(el('div',{className:'mut'},'Todavía no hay salidas cargadas.')); }
@@ -747,18 +781,20 @@ function vBajas(cont){
           const acc=el('div',{className:'fila',style:'gap:.3rem'});
           if(s.estado==='preparacion'){
             const bCont=el('button',{className:'sec'},'Continuar');
-            bCont.onclick=()=>{ SALIDA={id:s.id,numero:s.numero,objetivo:s.objetivo}; pintarSalida(zona); window.scrollTo(0,0); };
+            bCont.onclick=(e)=>{ e.stopPropagation(); SALIDA={id:s.id,numero:s.numero,objetivo:s.objetivo}; pintarSalida(zona); window.scrollTo(0,0); };
             acc.append(el('div',{style:'flex:0 0 auto'},bCont));
           }
           const bDel=el('button',{className:'gris'},'Eliminar');
-          bDel.onclick=async()=>{
+          bDel.onclick=async(e)=>{ e.stopPropagation();
             if(!confirm(`¿Eliminar la salida "${s.numero}"? Las ${s.cantidad} caravanas vuelven a activas.`))return;
-            try{ await rpc('eliminar_salida',{p_salida_id:s.id}); if(SALIDA&&SALIDA.id===s.id){SALIDA=null;zona.innerHTML='';} verHistSalidas(); }catch(e){alert(errMsg(e));}
+            try{ await rpc('eliminar_salida',{p_salida_id:s.id}); if(SALIDA&&SALIDA.id===s.id){SALIDA=null;zona.innerHTML='';} verHistSalidas(); }catch(err){alert(errMsg(err));}
           };
           acc.append(el('div',{style:'flex:0 0 auto'},bDel));
           const tdacc=el('td'); tdacc.append(acc);
-          tbody.append(el('tr',{},td(s.fecha,'num'),td(s.numero),td(s.destino||'—'),td(s.objetivo,'num'),td(s.cantidad,'num'),
-            tdChip(s.estado==='confirmada'?'baja confirmada':'en preparación', s.estado==='confirmada'?'ok':'warn'),tdacc));
+          const tr=el('tr',{style:'cursor:pointer'},td(s.fecha,'num'),td(s.numero),td(s.destino||'—'),td(s.objetivo,'num'),td(s.cantidad,'num'),
+            tdChip(s.estado==='confirmada'?'baja confirmada':'en preparación', s.estado==='confirmada'?'ok':'warn'),tdacc);
+          tr.onclick=()=>detalleCaravanasEnFila(tr,'salida_id',s.id,7);
+          tbody.append(tr);
         });
         tb.append(tbody); card.append(tb);
       }
