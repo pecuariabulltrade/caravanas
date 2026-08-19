@@ -435,14 +435,26 @@ function previstaBox(p){
   box.append(el('div',{className:'mut',style:'margin-bottom:.5rem'},
     `Pedidas ${p.total_pedido} · tomaría ${p.total_tomaria}`+(p.faltan>0?` · faltan ${p.faltan} vírgenes`:'')+` · vírgenes disponibles ${p.disponibles}`));
   box.append(tablaGrupos(p.resumen,'tomaria'));
-  const filas=(p.filas||[]).slice(0,12);
+  const filas=(p.filas||[]);
   if(filas.length){
     const tb=el('table',{style:'margin-top:.7rem'});
     tb.append(el('thead',{},filaTH(['Caravana','Categoría','Lote','Ingreso','40 días','90 días'])));
-    const tbody=el('tbody');
-    filas.forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.categoria),td(f.lote),td(f.fecha_ingreso,'num'),td(f.fecha_40,'num'),td(f.fecha_90,'num'))));
-    tb.append(tbody); box.append(tb);
-    if(p.total_tomaria>filas.length) box.append(el('div',{className:'mut',style:'margin-top:.4rem'},`… y ${p.total_tomaria-filas.length} más`));
+    const tbody=el('tbody'); tb.append(tbody); box.append(tb);
+    let mostradas=0;
+    const pintar=(n)=>{ filas.slice(mostradas,mostradas+n).forEach(f=>tbody.append(
+        el('tr',{},td(f.numero,'num'),td(f.categoria),td(f.lote),td(f.fecha_ingreso,'num'),td(f.fecha_40,'num'),td(f.fecha_90,'num'))));
+      mostradas=Math.min(mostradas+n,filas.length); };
+    pintar(12);
+    const pie=el('div',{style:'margin-top:.4rem'}); box.append(pie);
+    const actualizar=()=>{ pie.innerHTML='';
+      if(mostradas<filas.length){
+        const link=el('a',{style:'cursor:pointer;font-weight:600'},`▼ Ver las ${filas.length-mostradas} restantes`);
+        link.onclick=()=>{ pintar(filas.length); actualizar(); };
+        pie.append(link);
+      } else if(filas.length>12){ pie.append(el('span',{className:'mut'},`Mostrando las ${filas.length}`)); }
+      if(p.truncado) pie.append(el('div',{className:'mut'},'(prevista limitada a 500 filas)'));
+    };
+    actualizar();
   }
   return box;
 }
@@ -476,6 +488,30 @@ function vVirgenes(cont){
   t.append(filaX);
   cont.append(t);
   const res=el('div'); cont.append(res);
+  const ultBox=el('div'); cont.append(ultBox);
+
+  async function verUltimas(){
+    ultBox.innerHTML='';
+    try{
+      const u=await rpc('ultimas_virgenes',{p_limite:60});
+      const c=el('div',{className:'tarjeta'});
+      c.append(el('h3',{},'Vírgenes en stock: '+fmt(u.total)));
+      c.append(el('div',{className:'mut',style:'margin-bottom:.5rem'},
+        `Último rango cargado: ${u.desde||'—'} → ${u.hasta||'—'} · ${fmt(u.ultimo_lote_cantidad)} caravanas`
+        +(u.proveedor?` · ${u.proveedor}`:'')+(u.ultima_fecha&&u.ultima_fecha!=='null'?` · ${u.ultima_fecha}`:'')));
+      const its=(u.lista||[]);
+      if(its.length){
+        const tb=el('table');
+        tb.append(el('thead',{},filaTH(['Caravana','Proveedor','Fecha compra'])));
+        const tbody=el('tbody');
+        its.forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.proveedor||'—'),td(f.fecha_compra||'—','num'))));
+        tb.append(tbody); c.append(tb);
+        c.append(el('div',{className:'mut',style:'margin-top:.4rem'},'(últimas '+its.length+' agregadas)'));
+      }
+      ultBox.append(c);
+    }catch(e){}
+  }
+  verUltimas();
 
   file.onchange=async()=>{ const nums=await numerosDeArchivo(file.files[0]); ta.value=nums.join('\n'); };
   b.onclick=async()=>{
@@ -488,7 +524,7 @@ function vVirgenes(cont){
         el('h3',{},'Listo ✔'),
         el('div',{},`Nuevas: ${r.nuevas} · repetidas (ya estaban): ${r.repetidas}`),
         el('div',{className:'mut',style:'margin-top:.3rem'},`Vírgenes en stock ahora: ${fmt(r.total_virgenes)}`)));
-      ta.value='';
+      ta.value=''; verUltimas();
     }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
     b.disabled=false;b.textContent='Cargar vírgenes';
   };
@@ -500,16 +536,20 @@ function vVirgenes(cont){
 function vLotes(cont){
   cont.append(el('h2',{},'Armado de lotes (cajas)'));
   cont.append(el('div',{className:'mut',style:'margin-bottom:.7rem'},
-    'Rotulá cajas (25 por caja). Podés tomar por cantidad, por rango desde-hasta, o pegando números. También sirve para juntar sobrantes.'));
+    'Rotulá cajas (25 por caja). Importante: una caja = una sola categoría. Elegí la categoría al armar para no mezclar.'));
 
   const t=el('div',{className:'tarjeta'});
   t.append(el('label',{},'Rótulo de la caja'),el('input',{id:'lRot',placeholder:'Ej: 25-260'}));
   const fila=el('div',{className:'fila',style:'margin-top:.6rem'});
   const modo=el('select',{id:'lModo'});
-  [['cantidad','Por cantidad'],['rango','Por rango desde-hasta'],['texto','Pegar números']].forEach(([v,t])=>modo.append(el('option',{value:v},t)));
+  [['cantidad','Por cantidad'],['rango','Por rango desde-hasta'],['texto','Pegar números']].forEach(([v,tx])=>modo.append(el('option',{value:v},tx)));
   const desdeLote=el('select',{id:'lDesde'});
-  [['CLASIFICAR','Desde CLASIFICAR'],['','Cualquier lote'],['__sin_lote__','Sin lote']].forEach(([v,t])=>desdeLote.append(el('option',{value:v},t)));
-  fila.append(el('div',{},el('label',{},'Cómo tomar'),modo),el('div',{},el('label',{},'Origen'),desdeLote));
+  [['CLASIFICAR','Desde CLASIFICAR'],['','Cualquier lote'],['__sin_lote__','Sin lote']].forEach(([v,tx])=>desdeLote.append(el('option',{value:v},tx)));
+  const catSel=el('select',{id:'lCatSel'});
+  [['','(todas — puede mezclar)'],['Vaca','Vaca'],['Toro','Toro'],['Macho','Macho'],['Hembra','Hembra']].forEach(([v,tx])=>catSel.append(el('option',{value:v},tx)));
+  fila.append(el('div',{},el('label',{},'Cómo tomar'),modo),
+              el('div',{},el('label',{},'Origen'),desdeLote),
+              el('div',{},el('label',{},'Categoría de la caja'),catSel));
   t.append(fila);
 
   const zona=el('div',{style:'margin-top:.6rem'}); t.append(zona);
@@ -536,7 +576,7 @@ function vLotes(cont){
   modo.onchange=pintarZona; pintarZona();
 
   function args(){
-    const a={p_rotulo:$('#lRot').value,p_desde_lote:desdeLote.value,p_estado_filtro:'activa'};
+    const a={p_rotulo:$('#lRot').value,p_desde_lote:desdeLote.value,p_estado_filtro:'activa',p_categoria:catSel.value};
     if(modo.value==='cantidad') a.p_cantidad=Number(($('#lCant')||{}).value||0);
     else if(modo.value==='rango'){a.p_desde=($('#lD')||{}).value||'';a.p_hasta=($('#lH')||{}).value||'';}
     else a.p_texto=($('#lTxt')||{}).value||'';
@@ -547,13 +587,14 @@ function vLotes(cont){
     const a=args();
     try{
       const p=await rpc('previsualizar_lote',{p_desde_lote:a.p_desde_lote,p_estado_filtro:'activa',
-        p_cantidad:a.p_cantidad||0,p_desde:a.p_desde||'',p_hasta:a.p_hasta||''});
+        p_cantidad:a.p_cantidad||0,p_desde:a.p_desde||'',p_hasta:a.p_hasta||'',p_categoria:catSel.value});
       const box=el('div',{className:'tarjeta'});
       box.append(el('h3',{},'Prevista'),el('div',{className:'mut'},`Coinciden ${p.total_filtro} · tomaría ${p.tomaria}`));
+      if(p.mixta) box.append(el('div',{className:'aviso'},'⚠ Ojo: esta selección mezcla categorías. Elegí una categoría arriba para que la caja quede de una sola.'));
       const its=(p.items||[]).slice(0,15);
       if(its.length){const tb=el('table',{style:'margin-top:.5rem'});
-        tb.append(el('thead',{},filaTH(['Caravana','Estado','Lote actual'])));
-        const tbody=el('tbody');its.forEach(i=>tbody.append(el('tr',{},td(i.numero,'num'),td(i.estado),td(i.lote||'—'))));
+        tb.append(el('thead',{},filaTH(['Caravana','Categoría','Estado','Lote actual'])));
+        const tbody=el('tbody');its.forEach(i=>tbody.append(el('tr',{},td(i.numero,'num'),td(i.categoria||'—'),td(i.estado),td(i.lote||'—'))));
         tb.append(tbody);box.append(tb);
         if(p.tomaria>its.length)box.append(el('div',{className:'mut',style:'margin-top:.3rem'},`… y ${p.tomaria-its.length} más`));}
       res.append(box);
@@ -568,6 +609,7 @@ function vLotes(cont){
       res.innerHTML='';
       res.append(el('div',{className:'tarjeta'},el('h3',{},'Rotuladas ✔'),
         el('div',{},`${r.asignadas} caravanas → caja ${r.rotulo}`),
+        r.mixta?el('div',{className:'aviso'},'⚠ Esta caja quedó con más de una categoría. Recordá: una caja = una sola categoría.'):null,
         (r.no_existen&&r.no_existen.length)?el('div',{className:'aviso'},'No existían: '+r.no_existen.join(', ')):null));
       await pintarResumen(res);
     }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
@@ -577,15 +619,63 @@ function vLotes(cont){
 }
 async function pintarResumen(res){
   try{
-    const l=await rpc('lotes_resumen');
+    const l=(await rpc('lotes_resumen'))||[];
     const box=el('div',{className:'tarjeta'});
-    box.append(el('h3',{},'Cajas armadas'));
-    const tb=el('table');
-    tb.append(el('thead',{},filaTH(['Caja','Total','Activas','Vírgenes'])));
-    const tbody=el('tbody');
-    (l||[]).slice(0,40).forEach(x=>tbody.append(el('tr',{},td(x.rotulo),td(x.total,'num'),td(x.activas,'num'),td(x.virgenes,'num'))));
-    tb.append(tbody);box.append(tb);res.append(box);
+    box.append(el('h3',{},'Cajas armadas'),
+      el('div',{className:'mut',style:'margin-bottom:.5rem'},'Tocá una caja para ver las caravanas que la componen.'));
+    // buscador + filtros
+    const ff=el('div',{className:'fila',style:'margin-bottom:.6rem'});
+    const q=el('input',{placeholder:'Buscar por rótulo (ej: 25-2)'});
+    const fc=el('select');
+    [['','Todas las categorías'],['Vaca','Vaca'],['Toro','Toro'],['Macho','Macho'],['Hembra','Hembra'],['VARIAS','⚠ Mezcladas']].forEach(([v,tx])=>fc.append(el('option',{value:v},tx)));
+    const fd=el('input',{type:'date'});
+    ff.append(el('div',{style:'flex:2'},el('label',{},'Buscar caja'),q),
+              el('div',{},el('label',{},'Categoría'),fc),
+              el('div',{},el('label',{},'Fecha activación'),fd));
+    box.append(ff);
+    const zona=el('div'); box.append(zona);
+    const render=()=>{
+      zona.innerHTML='';
+      let arr=l.slice();
+      const qt=(q.value||'').trim().toUpperCase();
+      if(qt) arr=arr.filter(x=>String(x.rotulo).toUpperCase().includes(qt));
+      if(fc.value) arr=arr.filter(x=>x.categoria===fc.value);
+      if(fd.value) arr=arr.filter(x=>x.fecha===fd.value);
+      const tb=el('table');
+      tb.append(el('thead',{},filaTH(['Caja','Categoría','Total','Activas','Vírgenes'])));
+      const tbody=el('tbody');
+      arr.forEach(x=>{
+        const tr=el('tr',{style:'cursor:pointer'});
+        const catTd=x.mixta ? tdChip('⚠ '+(x.categoria||'VARIAS'),'warn') : td(x.categoria||'—');
+        tr.append(td(x.rotulo),catTd,td(x.total,'num'),td(x.activas,'num'),td(x.virgenes,'num'));
+        tr.onclick=()=>abrirCaja(x.rotulo,tr);
+        tbody.append(tr);
+      });
+      tb.append(tbody); zona.append(tb);
+      zona.append(el('div',{className:'mut',style:'margin-top:.4rem'},`${arr.length} caja(s)`));
+    };
+    q.oninput=render; fc.onchange=render; fd.onchange=render; render();
+    res.append(box);
   }catch(e){}
+}
+async function abrirCaja(rotulo,tr){
+  const next=tr.nextSibling;
+  if(next && next.__detalle){ next.remove(); return; }
+  let d; try{ d=await rpc('lote_detalle',{p_rotulo:rotulo}); }catch(e){ return; }
+  const trd=el('tr'); trd.__detalle=true;
+  const tdd=el('td'); tdd.colSpan=5;
+  const inner=el('div',{className:'tarjeta',style:'margin:.3rem 0;background:#f8fafc'});
+  inner.append(el('h3',{},'Caja '+rotulo+' — '+(d?d.length:0)+' caravanas'));
+  const tb=el('table');
+  tb.append(el('thead',{},filaTH(['Caravana','Categoría','Estado','Activación','40 días','90 días'])));
+  const tbody=el('tbody');
+  (d||[]).slice(0,300).forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.categoria),
+    tdChip(f.activa?'activa':f.estado,f.activa?'ok':'warn'),td(f.fecha_activacion||'—','num'),
+    td(f.fecha_40||'—','num'),td(f.fecha_90||'—','num'))));
+  tb.append(tbody); inner.append(tb);
+  if((d||[]).length>300) inner.append(el('div',{className:'mut',style:'margin-top:.3rem'},'… y '+(d.length-300)+' más'));
+  tdd.append(inner); trd.append(tdd);
+  tr.parentNode.insertBefore(trd,tr.nextSibling);
 }
 
 // ======================================================================
