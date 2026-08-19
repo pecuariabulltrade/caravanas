@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestión de Caravanas</title>
+<style>
+  :root{
+    --azul:#2a78d6; --naranja:#eb6834; --verde:#1baf7a; --amar:#eda100; --rosa:#e87ba4;
+    --tinta:#1d2430; --gris:#5b6672; --linea:#e3e8ef; --fondo:#f4f6fa; --tarjeta:#fff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+       background:var(--fondo);color:var(--tinta);font-size:15px}
+  h1,h2,h3{margin:0 0 .4em}
+  a{color:var(--azul)}
+  button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:.55em 1em;
+         background:var(--azul);color:#fff;font-weight:600}
+  button.sec{background:#eef2f8;color:var(--tinta)}
+  button.gris{background:#e7ebf1;color:var(--tinta)}
+  button:disabled{opacity:.5;cursor:default}
+  input,select,textarea{font:inherit;padding:.5em .6em;border:1px solid var(--linea);
+         border-radius:8px;background:#fff;width:100%}
+  label{display:block;font-size:.82rem;color:var(--gris);margin:.2em 0 .25em;font-weight:600}
+  .fila{display:flex;gap:.7rem;flex-wrap:wrap}
+  .fila > *{flex:1;min-width:120px}
+  .tarjeta{background:var(--tarjeta);border:1px solid var(--linea);border-radius:14px;
+           padding:1.1rem 1.2rem;margin-bottom:1rem}
+  .chip{display:inline-block;padding:.15em .6em;border-radius:20px;font-size:.78rem;font-weight:700}
+  .ok{background:#e4f6ee;color:#0c7a52}
+  .warn{background:#fdeee4;color:#b8560f}
+  .mut{color:var(--gris);font-size:.86rem}
+  table{border-collapse:collapse;width:100%;font-size:.9rem}
+  th,td{text-align:left;padding:.45em .5em;border-bottom:1px solid var(--linea)}
+  th{color:var(--gris);font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
+  .num{font-variant-numeric:tabular-nums}
+  /* --- layout --- */
+  header.top{background:#fff;border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
+  .top .in{max-width:1080px;margin:auto;display:flex;align-items:center;gap:1rem;padding:.7rem 1rem}
+  .top .marca{font-weight:800;font-size:1.05rem}
+  .top .marca small{color:var(--gris);font-weight:600}
+  nav.menu{max-width:1080px;margin:auto;display:flex;gap:.2rem;padding:0 .6rem;flex-wrap:wrap}
+  nav.menu a{padding:.6em .85em;color:var(--gris);font-weight:600;border-bottom:3px solid transparent;
+             text-decoration:none;cursor:pointer;white-space:nowrap}
+  nav.menu a.act{color:var(--azul);border-bottom-color:var(--azul)}
+  main{max-width:1080px;margin:auto;padding:1.1rem 1rem 4rem}
+  .oculto{display:none!important}
+  /* --- panel --- */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem}
+  .kpi{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:1rem}
+  .kpi .n{font-size:2rem;font-weight:800;line-height:1}
+  .kpi .t{color:var(--gris);font-size:.85rem;margin-top:.3rem}
+  .panelgrid{display:grid;grid-template-columns:1fr;gap:1rem}
+  @media(min-width:760px){.panelgrid{grid-template-columns:1.1fr .9fr}}
+  .leyenda{display:flex;flex-direction:column;gap:.35rem;justify-content:center}
+  .leyenda .it{display:flex;align-items:center;gap:.5rem;font-size:.92rem}
+  .leyenda .pt{width:13px;height:13px;border-radius:4px;flex:0 0 auto}
+  .donutwrap{display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap}
+  /* --- login --- */
+  #login{position:fixed;inset:0;background:linear-gradient(160deg,#eaf1fb,#f4f6fa);
+         display:flex;align-items:center;justify-content:center;z-index:50}
+  #login .caja{background:#fff;border:1px solid var(--linea);border-radius:18px;padding:2rem;
+               width:min(380px,92vw);box-shadow:0 20px 50px rgba(20,40,80,.12)}
+  .msg{padding:.6em .8em;border-radius:9px;margin:.6rem 0;font-size:.9rem;display:none}
+  .msg.e{background:#fdecec;color:#b12626;display:block}
+  .msg.k{background:#e4f6ee;color:#0c7a52;display:block}
+  .aviso{background:#fff8e8;border:1px solid #f0dfb0;border-radius:10px;padding:.7em .9em;
+         font-size:.86rem;color:#6a5312;margin:.5rem 0}
+  .spin{display:inline-block;width:15px;height:15px;border:2px solid #fff6;border-top-color:#fff;
+        border-radius:50%;animation:g .7s linear infinite;vertical-align:-2px}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login">
+  <div class="caja">
+    <div class="marca" style="font-weight:800;font-size:1.2rem;margin-bottom:.2rem">Gestión de Caravanas</div>
+    <div class="mut" style="margin-bottom:1rem">Entrá con tu usuario y contraseña.</div>
+    <div id="loginMsg" class="msg"></div>
+    <label>Correo (usuario)</label>
+    <input id="email" type="email" autocomplete="username" placeholder="tu@correo.com">
+    <label style="margin-top:.7rem">Contraseña</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button id="btnLogin" style="width:100%;margin-top:1.1rem">Entrar</button>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" class="oculto">
+  <header class="top">
+    <div class="in">
+      <div class="marca">Gestión de Caravanas <small id="rolLbl"></small></div>
+      <div style="flex:1"></div>
+      <span class="mut" id="userLbl"></span>
+      <button class="gris" id="btnSalir">Salir</button>
+    </div>
+    <nav class="menu" id="menu"></nav>
+  </header>
+  <main id="vista"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script>
+// ======================================================================
+//  Conexión
+// ======================================================================
+const PALETA = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#8a5cf6'];
+let sb, USUARIO=null, ROL='consulta';
+
+function iniciarCliente(){
+  if(!window.CONFIG || CONFIG.SUPABASE_URL.includes('TU-PROYECTO')){
+    document.getElementById('loginMsg').className='msg e';
+    document.getElementById('loginMsg').textContent =
+      'Falta configurar la conexión: completá config.js con la URL y la anon key de tu proyecto Supabase.';
+    return false;
+  }
+  sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  return true;
+}
+
+// ---- helpers UI ----
+const $ = s => document.querySelector(s);
+const el = (t,p={},...h)=>{const e=document.createElement(t);Object.assign(e,p);
+  for(const c of h){if(c==null)continue;e.append(c.nodeType?c:document.createTextNode(c))}return e};
+const fmt = n => (n==null?'—':Number(n).toLocaleString('es-AR'));
+function esc(s){return String(s==null?'':s)}
+
+async function rpc(fn, args){ const {data,error}=await sb.rpc(fn,args||{}); if(error) throw error; return data; }
+function errMsg(e){ return (e&&e.message)||String(e); }
+
+// ======================================================================
+//  Arranque / sesión
+// ======================================================================
+async function arrancar(){
+  if(!iniciarCliente()) return;
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){ await entrar(session.user); }
+}
+async function login(){
+  const b=$('#btnLogin'); const m=$('#loginMsg'); m.className='msg';
+  b.disabled=true; b.innerHTML='<span class="spin"></span>';
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#pass').value});
+    if(error) throw error;
+    await entrar(data.user);
+  }catch(e){ m.className='msg e'; m.textContent='No se pudo entrar: '+errMsg(e); }
+  b.disabled=false; b.textContent='Entrar';
+}
+async function entrar(user){
+  USUARIO=user;
+  let perfil=null;
+  try{ const {data}=await sb.from('perfiles').select('rol,nombre').eq('id',user.id).single(); perfil=data; }catch(e){}
+  ROL = (perfil&&perfil.rol)||'consulta';
+  $('#userLbl').textContent = (perfil&&perfil.nombre)||user.email;
+  $('#rolLbl').textContent = ROL==='admin'?'· administrador':'· consulta';
+  $('#login').classList.add('oculto');
+  $('#app').classList.remove('oculto');
+  construirMenu();
+  irA('panel');
+}
+async function salir(){ await sb.auth.signOut(); location.reload(); }
+
+// ======================================================================
+//  Menú y ruteo
+// ======================================================================
+const VISTAS = {
+  panel:    {t:'Panel',      admin:false, f:vPanel},
+  consultar:{t:'Consultar',  admin:false, f:vConsultar},
+  guia:     {t:'Cierre de guía', admin:true, f:vGuia},
+  virgenes: {t:'Vírgenes',   admin:true, f:vVirgenes},
+  lotes:    {t:'Lotes',      admin:true, f:vLotes},
+  bajas:    {t:'Bajas',      admin:true, f:vBajas},
+  usuarios: {t:'Configuración', admin:true, f:vUsuarios},
+};
+let RUTA='panel';
+function construirMenu(){
+  const m=$('#menu'); m.innerHTML='';
+  for(const [k,v] of Object.entries(VISTAS)){
+    if(v.admin && ROL!=='admin') continue;
+    m.append(el('a',{onclick:()=>irA(k),id:'nav-'+k},v.t));
+  }
+}
+function irA(k){
+  RUTA=k;
+  document.querySelectorAll('nav.menu a').forEach(a=>a.classList.remove('act'));
+  const n=$('#nav-'+k); if(n)n.classList.add('act');
+  $('#vista').innerHTML='';
+  VISTAS[k].f($('#vista'));
+}
+
+// ======================================================================
+//  Donut SVG (sin librerías)
+// ======================================================================
+function donut(datos, tam=170){
+  const total = datos.reduce((a,d)=>a+d.n,0)||1;
+  const r=tam/2, ir=r*0.60, cx=r, cy=r; let ang=-Math.PI/2;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox',`0 0 ${tam} ${tam}`); svg.setAttribute('width',tam); svg.setAttribute('height',tam);
+  datos.forEach((d,i)=>{
+    const frac=d.n/total; const a2=ang+frac*Math.PI*2;
+    const large = (a2-ang)>Math.PI?1:0;
+    const x1=cx+r*Math.cos(ang), y1=cy+r*Math.sin(ang);
+    const x2=cx+r*Math.cos(a2),  y2=cy+r*Math.sin(a2);
+    const xi2=cx+ir*Math.cos(a2), yi2=cy+ir*Math.sin(a2);
+    const xi1=cx+ir*Math.cos(ang),yi1=cy+ir*Math.sin(ang);
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M${x1} ${y1} A${r} ${r} 0 ${large} 1 ${x2} ${y2} L${xi2} ${yi2} A${ir} ${ir} 0 ${large} 0 ${xi1} ${yi1} Z`);
+    p.setAttribute('fill',PALETA[i%PALETA.length]);
+    svg.append(p); ang=a2;
+  });
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x',cx);t.setAttribute('y',cy-2);t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','20');t.setAttribute('font-weight','800');t.setAttribute('fill','#1d2430');
+  t.textContent=fmt(total);
+  const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t2.setAttribute('x',cx);t2.setAttribute('y',cy+16);t2.setAttribute('text-anchor','middle');
+  t2.setAttribute('font-size','11');t2.setAttribute('fill','#5b6672');t2.textContent='activas';
+  svg.append(t,t2);
+  return svg;
+}
+
+// ======================================================================
+//  VISTA · PANEL
+// ======================================================================
+async function vPanel(cont){
+  cont.append(el('h2',{},'Panel'));
+  const cargando=el('div',{className:'mut'},'Cargando…'); cont.append(cargando);
+  let p;
+  try{ p=await rpc('panel'); }catch(e){ cargando.textContent='Error: '+errMsg(e); return; }
+  cargando.remove();
+
+  const kpis=el('div',{className:'kpis'});
+  const tarjeta=(n,t,color)=>{const k=el('div',{className:'kpi'});
+    k.append(el('div',{className:'n',style:`color:${color||'var(--tinta)'}`},fmt(n)),el('div',{className:'t'},t));return k;};
+  kpis.append(
+    tarjeta(p.activas_90_total,'Activas con 90 días cumplidos','var(--verde)'),
+    tarjeta(p.virgenes,'Caravanas vírgenes (en stock)','var(--azul)'),
+    tarjeta(p.total,'Total de caravanas (histórico)'),
+  );
+  cont.append(kpis);
+
+  // desglose 90 días
+  const d90=el('div',{className:'tarjeta'});
+  d90.append(el('h3',{},'Con 90 días cumplidos, por categoría'));
+  const f=el('div',{className:'kpis'});
+  f.append(tarjeta(p.activas_90_vaca,'Vaca','var(--azul)'),
+           tarjeta(p.activas_90_hembra,'Hembra','var(--rosa)'),
+           tarjeta(p.activas_90_macho,'Macho','var(--naranja)'));
+  d90.append(f); cont.append(d90);
+
+  // composición del rodeo activo (donut)
+  const comp=(p.composicion||[]).filter(x=>x.n>0);
+  if(comp.length){
+    const box=el('div',{className:'tarjeta'});
+    box.append(el('h3',{},'Composición del rodeo activo'));
+    const wrap=el('div',{className:'donutwrap'});
+    wrap.append(donut(comp));
+    const leg=el('div',{className:'leyenda'});
+    const tot=comp.reduce((a,x)=>a+x.n,0)||1;
+    comp.forEach((x,i)=>{
+      const it=el('div',{className:'it'});
+      it.append(el('span',{className:'pt',style:`background:${PALETA[i%PALETA.length]}`}),
+                el('span',{},`${x.nombre}: `),
+                el('strong',{},fmt(x.n)),
+                el('span',{className:'mut'},` (${Math.round(x.n/tot*100)}%)`));
+      leg.append(it);
+    });
+    wrap.append(leg); box.append(wrap); cont.append(box);
+  }
+}
+
+// ======================================================================
+//  VISTA · CONSULTAR  (los dos roles)
+// ======================================================================
+function vConsultar(cont){
+  cont.append(el('h2',{},'Consultar'));
+  cont.append(el('div',{className:'mut',style:'margin-bottom:.8rem'},
+    'Buscá una caravana o subí un Excel/CSV. Te muestro estado, categoría, fecha de activación y las fechas de 40 y 90 días.'));
+
+  const t=el('div',{className:'tarjeta'});
+  const fila=el('div',{className:'fila'});
+  const inp=el('input',{placeholder:'Pegá uno o varios números (o rango 123-130)'});
+  const btn=el('button',{},'Consultar');
+  fila.append(el('div',{style:'flex:3'},inp), el('div',{style:'flex:0 0 auto'},btn));
+  t.append(fila);
+  const filaX=el('div',{className:'fila',style:'margin-top:.7rem;align-items:center'});
+  const file=el('input',{type:'file',accept:'.xlsx,.xls,.csv'});
+  filaX.append(el('div',{},el('label',{},'…o subí un archivo con la columna de caravanas'),file));
+  t.append(filaX);
+  cont.append(t);
+
+  const res=el('div'); cont.append(res);
+  btn.onclick=()=>consultarNums(desglosar(inp.value),res);
+  file.onchange=async()=>{ const nums=await numerosDeArchivo(file.files[0]); consultarNums(nums,res); };
+}
+function desglosar(txt){ return String(txt||'').split(/[\s,;]+/).filter(Boolean); }
+async function numerosDeArchivo(f){
+  if(!f) return [];
+  const buf=await f.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  // busca la columna que más parezca caravanas (más celdas de 8+ dígitos)
+  let mejor=0,mejorN=-1;
+  const nc=Math.max(...rows.map(r=>r.length),0);
+  for(let c=0;c<nc;c++){let s=0;for(const r of rows){const v=String(r[c]||'').replace(/\D/g,'');if(v.length>=8)s++;}if(s>mejorN){mejorN=s;mejor=c;}}
+  const out=[]; for(const r of rows){const v=String(r[mejor]||'').trim();if(v && /\d/.test(v))out.push(v);}
+  return out;
+}
+async function consultarNums(nums,res){
+  res.innerHTML='';
+  nums=nums.filter(Boolean);
+  if(!nums.length){res.append(el('div',{className:'aviso'},'No encontré números para consultar.'));return;}
+  const cargando=el('div',{className:'mut'},'Consultando…'); res.append(cargando);
+  let d;
+  try{ d=await rpc('consultar',{p_numeros:nums}); }catch(e){cargando.textContent='Error: '+errMsg(e);return;}
+  cargando.remove();
+  const box=el('div',{className:'tarjeta'});
+  box.append(el('div',{className:'mut',style:'margin-bottom:.5rem'},
+    `${d.total} encontrada(s)`+(d.no_estan&&d.no_estan.length?` · ${d.no_estan.length} sin registrar`:'')));
+  if(d.items&&d.items.length){
+    const tb=el('table');
+    tb.append(el('thead',{},filaTH(['Caravana','Categoría','Estado','SENASA','Ingreso','40 días','90 días'])));
+    const tbody=el('tbody');
+    for(const it of d.items){
+      const tr=el('tr');
+      tr.append(td(it.caravana,'num'),td(it.categoria),
+        tdChip(it.activa?'activa':it.estado, it.activa?'ok':'warn'),
+        td(it.estado_senasa||'—'),
+        td(it.fecha_activacion||'—','num'),td(it.fecha_40||'—','num'),td(it.fecha_90||'—','num'));
+      tbody.append(tr);
+    }
+    tb.append(tbody); box.append(tb);
+  }
+  if(d.no_estan&&d.no_estan.length){
+    box.append(el('div',{className:'aviso'},'No están en el sistema: '+d.no_estan.slice(0,40).join(', ')+(d.no_estan.length>40?'…':'')));
+  }
+  res.append(box);
+}
+function filaTH(arr){const tr=el('tr');arr.forEach(x=>tr.append(el('th',{},x)));return tr;}
+function td(v,cls){return el('td',{className:cls||''},esc(v));}
+function tdChip(txt,cls){const t=el('td');t.append(el('span',{className:'chip '+cls},txt));return t;}
+
+// ======================================================================
+//  VISTA · CIERRE DE GUÍA
+// ======================================================================
+const CATS = ['VACA','TORO','MACHO','HEMBRA'];
+function vGuia(cont){
+  cont.append(el('h2',{},'Cierre de guía'));
+  cont.append(el('div',{className:'aviso'},
+    'Cerrá primero la guía en SIGSA. Acá tomo las vírgenes CONSECUTIVAS desde la primera libre, les pongo categoría, fecha y origen, y quedan en «CLASIFICAR».'));
+
+  const t=el('div',{className:'tarjeta'});
+  // paso: cantidad + categoria
+  t.append(el('h3',{},'1 · ¿Cuántas y de qué categoría?'));
+  const fila=el('div',{className:'fila'});
+  const cant=el('input',{type:'number',min:'1',placeholder:'Cantidad'});
+  const cat=el('select');
+  ['VACA','TORO','MACHO','HEMBRA','MIXTO'].forEach(c=>cat.append(el('option',{value:c},c)));
+  fila.append(el('div',{},el('label',{},'Cantidad'),cant),
+              el('div',{},el('label',{},'Categoría'),cat));
+  t.append(fila);
+
+  // desglose MIXTO
+  const mix=el('div',{className:'oculto',style:'margin-top:.7rem'});
+  mix.append(el('label',{},'Desglose (cuántas de cada una)'));
+  const mfila=el('div',{className:'fila'});
+  const mInp={};
+  CATS.forEach(c=>{const i=el('input',{type:'number',min:'0',placeholder:'0'});mInp[c]=i;
+    mfila.append(el('div',{},el('label',{className:'mut'},c),i));});
+  mix.append(mfila);
+  t.append(mix);
+  cat.onchange=()=>mix.classList.toggle('oculto',cat.value!=='MIXTO');
+
+  // fecha + origen + guia
+  t.append(el('h3',{style:'margin-top:1rem'},'2 · Fecha, origen y número de guía'));
+  const fila2=el('div',{className:'fila'});
+  const fecha=el('input',{type:'date',value:hoyISO()});
+  const origen=el('input',{placeholder:'De quién vienen'});
+  const numg=el('input',{placeholder:'N° de guía (opcional)'});
+  fila2.append(el('div',{},el('label',{},'Fecha de ingreso'),fecha),
+               el('div',{},el('label',{},'Origen'),origen),
+               el('div',{},el('label',{},'N° de guía'),numg));
+  t.append(fila2);
+
+  const acc=el('div',{className:'fila',style:'margin-top:1rem'});
+  const bPrev=el('button',{className:'sec'},'Ver prevista');
+  const bGuardar=el('button',{},'Guardar cierre');
+  acc.append(el('div',{style:'flex:0 0 auto'},bPrev),el('div',{style:'flex:0 0 auto'},bGuardar),el('div',{}));
+  t.append(acc);
+  cont.append(t);
+
+  const salida=el('div'); cont.append(salida);
+
+  function grupos(){
+    if(cat.value==='MIXTO'){
+      return CATS.map(c=>({categoria:c,cantidad:Number(mInp[c].value||0)})).filter(g=>g.cantidad>0);
+    }
+    return [{categoria:cat.value,cantidad:Number(cant.value||0)}];
+  }
+  bPrev.onclick=async()=>{
+    salida.innerHTML=''; const g=grupos();
+    if(!g.length){salida.append(el('div',{className:'aviso'},'Indicá la cantidad.'));return;}
+    try{
+      const p=await rpc('previsualizar_carga',{p_grupos:g,p_fecha:fecha.value,p_origen:origen.value});
+      salida.append(previstaBox(p));
+    }catch(e){salida.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  };
+  bGuardar.onclick=async()=>{
+    const g=grupos();
+    if(!g.length){salida.append(el('div',{className:'aviso'},'Indicá la cantidad.'));return;}
+    if(!origen.value.trim()){salida.append(el('div',{className:'aviso'},'Cargá el origen.'));return;}
+    if(!confirm('¿Guardar el cierre de guía? Se van a activar las caravanas.'))return;
+    bGuardar.disabled=true; bGuardar.innerHTML='<span class="spin"></span>';
+    try{
+      const r=await rpc('cargar_guia',{p_grupos:g,p_fecha:fecha.value,p_origen:origen.value,p_numero:numg.value||'S/N',p_renspa:'',p_propietario:''});
+      salida.innerHTML='';
+      const box=el('div',{className:'tarjeta'});
+      box.append(el('h3',{},'Cierre guardado ✔'),
+        el('div',{className:'mut'},`Guardadas ${r.guardadas} de ${r.pedidas} · quedan en ${r.lote_provisional} · 40 días: ${r.fecha_40} · 90 días: ${r.fecha_90}`));
+      box.append(tablaGrupos(r.grupos,'guardadas'));
+      salida.append(box);
+      cant.value='';CATS.forEach(c=>mInp[c].value='');
+    }catch(e){ salida.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); }
+    bGuardar.disabled=false; bGuardar.textContent='Guardar cierre';
+  };
+}
+function previstaBox(p){
+  const box=el('div',{className:'tarjeta'});
+  box.append(el('h3',{},'Prevista — así van a quedar'));
+  box.append(el('div',{className:'mut',style:'margin-bottom:.5rem'},
+    `Pedidas ${p.total_pedido} · tomaría ${p.total_tomaria}`+(p.faltan>0?` · faltan ${p.faltan} vírgenes`:'')+` · vírgenes disponibles ${p.disponibles}`));
+  box.append(tablaGrupos(p.resumen,'tomaria'));
+  const filas=(p.filas||[]).slice(0,12);
+  if(filas.length){
+    const tb=el('table',{style:'margin-top:.7rem'});
+    tb.append(el('thead',{},filaTH(['Caravana','Categoría','Lote','Ingreso','40 días','90 días'])));
+    const tbody=el('tbody');
+    filas.forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.categoria),td(f.lote),td(f.fecha_ingreso,'num'),td(f.fecha_40,'num'),td(f.fecha_90,'num'))));
+    tb.append(tbody); box.append(tb);
+    if(p.total_tomaria>filas.length) box.append(el('div',{className:'mut',style:'margin-top:.4rem'},`… y ${p.total_tomaria-filas.length} más`));
+  }
+  return box;
+}
+function tablaGrupos(gr,campo){
+  const tb=el('table');
+  tb.append(el('thead',{},filaTH(['Categoría','Pedidas',campo==='tomaria'?'Tomaría':'Guardadas','Desde','Hasta'])));
+  const tbody=el('tbody');
+  (gr||[]).forEach(g=>tbody.append(el('tr',{},td(g.categoria),td(g.pedidas,'num'),td(g[campo],'num'),td(g.desde,'num'),td(g.hasta,'num'))));
+  tb.append(tbody); return tb;
+}
+
+// ======================================================================
+//  VISTA · VÍRGENES
+// ======================================================================
+function vVirgenes(cont){
+  cont.append(el('h2',{},'Vírgenes (compras)'));
+  cont.append(el('div',{className:'mut',style:'margin-bottom:.7rem'},
+    'Cargá las caravanas vírgenes que vas comprando. Después se usan solas en el cierre de guía, en orden.'));
+  const t=el('div',{className:'tarjeta'});
+  const ta=el('textarea',{rows:5,placeholder:'Pegá los números (o un rango: 3201000-3201050). Uno por línea o separados por coma.'});
+  t.append(el('label',{},'Números'),ta);
+  const fila=el('div',{className:'fila',style:'margin-top:.6rem'});
+  const prov=el('input',{placeholder:'Proveedor (opcional)'});
+  const fc=el('input',{type:'date',value:hoyISO()});
+  fila.append(el('div',{},el('label',{},'Proveedor'),prov),el('div',{},el('label',{},'Fecha de compra'),fc));
+  t.append(fila);
+  const filaX=el('div',{className:'fila',style:'margin-top:.6rem;align-items:end'});
+  const file=el('input',{type:'file',accept:'.xlsx,.xls,.csv'});
+  const b=el('button',{},'Cargar vírgenes');
+  filaX.append(el('div',{},el('label',{},'…o subí un archivo'),file),el('div',{style:'flex:0 0 auto'},b));
+  t.append(filaX);
+  cont.append(t);
+  const res=el('div'); cont.append(res);
+
+  file.onchange=async()=>{ const nums=await numerosDeArchivo(file.files[0]); ta.value=nums.join('\n'); };
+  b.onclick=async()=>{
+    if(!ta.value.trim()){res.innerHTML='';res.append(el('div',{className:'aviso'},'Pegá o subí los números.'));return;}
+    b.disabled=true;b.innerHTML='<span class="spin"></span>';
+    try{
+      const r=await rpc('agregar_virgenes',{p_texto:ta.value,p_proveedor:prov.value,p_fecha_compra:fc.value});
+      res.innerHTML='';
+      res.append(el('div',{className:'tarjeta'},
+        el('h3',{},'Listo ✔'),
+        el('div',{},`Nuevas: ${r.nuevas} · repetidas (ya estaban): ${r.repetidas}`),
+        el('div',{className:'mut',style:'margin-top:.3rem'},`Vírgenes en stock ahora: ${fmt(r.total_virgenes)}`)));
+      ta.value='';
+    }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+    b.disabled=false;b.textContent='Cargar vírgenes';
+  };
+}
+
+// ======================================================================
+//  VISTA · LOTES
+// ======================================================================
+function vLotes(cont){
+  cont.append(el('h2',{},'Armado de lotes (cajas)'));
+  cont.append(el('div',{className:'mut',style:'margin-bottom:.7rem'},
+    'Rotulá cajas (25 por caja). Podés tomar por cantidad, por rango desde-hasta, o pegando números. También sirve para juntar sobrantes.'));
+
+  const t=el('div',{className:'tarjeta'});
+  t.append(el('label',{},'Rótulo de la caja'),el('input',{id:'lRot',placeholder:'Ej: 25-260'}));
+  const fila=el('div',{className:'fila',style:'margin-top:.6rem'});
+  const modo=el('select',{id:'lModo'});
+  [['cantidad','Por cantidad'],['rango','Por rango desde-hasta'],['texto','Pegar números']].forEach(([v,t])=>modo.append(el('option',{value:v},t)));
+  const desdeLote=el('select',{id:'lDesde'});
+  [['CLASIFICAR','Desde CLASIFICAR'],['','Cualquier lote'],['__sin_lote__','Sin lote']].forEach(([v,t])=>desdeLote.append(el('option',{value:v},t)));
+  fila.append(el('div',{},el('label',{},'Cómo tomar'),modo),el('div',{},el('label',{},'Origen'),desdeLote));
+  t.append(fila);
+
+  const zona=el('div',{style:'margin-top:.6rem'}); t.append(zona);
+  const acc=el('div',{className:'fila',style:'margin-top:.8rem'});
+  const bPrev=el('button',{className:'sec'},'Ver prevista'); const bRot=el('button',{},'Rotular');
+  acc.append(el('div',{style:'flex:0 0 auto'},bPrev),el('div',{style:'flex:0 0 auto'},bRot),el('div'));
+  t.append(acc);
+  cont.append(t);
+  const res=el('div'); cont.append(res);
+
+  function pintarZona(){
+    zona.innerHTML='';
+    if(modo.value==='cantidad'){
+      zona.append(el('label',{},'Cantidad (ej. 25)'),el('input',{id:'lCant',type:'number',min:'1',value:'25'}));
+    }else if(modo.value==='rango'){
+      const f=el('div',{className:'fila'});
+      f.append(el('div',{},el('label',{},'Desde'),el('input',{id:'lD',placeholder:'N° inicial'})),
+               el('div',{},el('label',{},'Hasta'),el('input',{id:'lH',placeholder:'N° final'})));
+      zona.append(f);
+    }else{
+      zona.append(el('label',{},'Números'),el('textarea',{id:'lTxt',rows:4,placeholder:'Pegá los números o un rango 100-124'}));
+    }
+  }
+  modo.onchange=pintarZona; pintarZona();
+
+  function args(){
+    const a={p_rotulo:$('#lRot').value,p_desde_lote:desdeLote.value,p_estado_filtro:'activa'};
+    if(modo.value==='cantidad') a.p_cantidad=Number(($('#lCant')||{}).value||0);
+    else if(modo.value==='rango'){a.p_desde=($('#lD')||{}).value||'';a.p_hasta=($('#lH')||{}).value||'';}
+    else a.p_texto=($('#lTxt')||{}).value||'';
+    return a;
+  }
+  bPrev.onclick=async()=>{
+    res.innerHTML='';
+    const a=args();
+    try{
+      const p=await rpc('previsualizar_lote',{p_desde_lote:a.p_desde_lote,p_estado_filtro:'activa',
+        p_cantidad:a.p_cantidad||0,p_desde:a.p_desde||'',p_hasta:a.p_hasta||''});
+      const box=el('div',{className:'tarjeta'});
+      box.append(el('h3',{},'Prevista'),el('div',{className:'mut'},`Coinciden ${p.total_filtro} · tomaría ${p.tomaria}`));
+      const its=(p.items||[]).slice(0,15);
+      if(its.length){const tb=el('table',{style:'margin-top:.5rem'});
+        tb.append(el('thead',{},filaTH(['Caravana','Estado','Lote actual'])));
+        const tbody=el('tbody');its.forEach(i=>tbody.append(el('tr',{},td(i.numero,'num'),td(i.estado),td(i.lote||'—'))));
+        tb.append(tbody);box.append(tb);
+        if(p.tomaria>its.length)box.append(el('div',{className:'mut',style:'margin-top:.3rem'},`… y ${p.tomaria-its.length} más`));}
+      res.append(box);
+    }catch(e){res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  };
+  bRot.onclick=async()=>{
+    if(!$('#lRot').value.trim()){res.innerHTML='';res.append(el('div',{className:'aviso'},'Escribí el rótulo.'));return;}
+    if(!confirm('¿Rotular estas caravanas como caja «'+$('#lRot').value+'»?'))return;
+    bRot.disabled=true;bRot.innerHTML='<span class="spin"></span>';
+    try{
+      const r=await rpc('asignar_lote',args());
+      res.innerHTML='';
+      res.append(el('div',{className:'tarjeta'},el('h3',{},'Rotuladas ✔'),
+        el('div',{},`${r.asignadas} caravanas → caja ${r.rotulo}`),
+        (r.no_existen&&r.no_existen.length)?el('div',{className:'aviso'},'No existían: '+r.no_existen.join(', ')):null));
+      await pintarResumen(res);
+    }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+    bRot.disabled=false;bRot.textContent='Rotular';
+  };
+  pintarResumen(res);
+}
+async function pintarResumen(res){
+  try{
+    const l=await rpc('lotes_resumen');
+    const box=el('div',{className:'tarjeta'});
+    box.append(el('h3',{},'Cajas armadas'));
+    const tb=el('table');
+    tb.append(el('thead',{},filaTH(['Caja','Total','Activas','Vírgenes'])));
+    const tbody=el('tbody');
+    (l||[]).slice(0,40).forEach(x=>tbody.append(el('tr',{},td(x.rotulo),td(x.total,'num'),td(x.activas,'num'),td(x.virgenes,'num'))));
+    tb.append(tbody);box.append(tb);res.append(box);
+  }catch(e){}
+}
+
+// ======================================================================
+//  VISTA · BAJAS
+// ======================================================================
+let SALIDA=null;
+function vBajas(cont){
+  cont.append(el('h2',{},'Bajas (salidas)'));
+  cont.append(el('div',{className:'mut',style:'margin-bottom:.7rem'},
+    'Creá una salida con su objetivo, subí el Excel de las que salen, y completá del stock lo que falte. Al confirmar, quedan dadas de baja.'));
+
+  const t=el('div',{className:'tarjeta'});
+  t.append(el('h3',{},'Nueva salida'));
+  const fila=el('div',{className:'fila'});
+  const num=el('input',{placeholder:'N° (opcional)'});
+  const dest=el('input',{placeholder:'Destino'});
+  const obj=el('input',{type:'number',min:'0',placeholder:'Cuántas salen'});
+  const fecha=el('input',{type:'date',value:hoyISO()});
+  fila.append(el('div',{},el('label',{},'N°'),num),el('div',{},el('label',{},'Destino'),dest),
+              el('div',{},el('label',{},'Objetivo'),obj),el('div',{},el('label',{},'Fecha'),fecha));
+  t.append(fila);
+  const b=el('button',{style:'margin-top:.7rem'},'Crear salida');
+  t.append(b); cont.append(t);
+  const zona=el('div'); cont.append(zona);
+
+  b.onclick=async()=>{
+    try{
+      const r=await rpc('crear_salida',{p_numero:num.value||'S/N',p_fecha:fecha.value,p_destino:dest.value,p_objetivo:Number(obj.value||0)});
+      SALIDA={id:r.id,numero:num.value||'S/N',objetivo:Number(obj.value||0)};
+      pintarSalida(zona);
+    }catch(e){zona.innerHTML='';zona.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  };
+}
+async function pintarSalida(zona){
+  zona.innerHTML='';
+  if(!SALIDA)return;
+  const t=el('div',{className:'tarjeta'});
+  t.append(el('h3',{},`Salida ${SALIDA.numero} · objetivo ${SALIDA.objetivo}`));
+
+  // subir excel
+  const filaX=el('div',{className:'fila',style:'align-items:end'});
+  const file=el('input',{type:'file',accept:'.xlsx,.xls,.csv'});
+  const ta=el('textarea',{rows:3,placeholder:'…o pegá los números que salen'});
+  const bSub=el('button',{},'Cargar las que salen');
+  filaX.append(el('div',{style:'flex:2'},el('label',{},'Excel de la jaula'),file),
+               el('div',{style:'flex:0 0 auto'},bSub));
+  t.append(filaX,el('div',{style:'margin-top:.5rem'},el('label',{},'o pegar'),ta));
+
+  // completar
+  const filaC=el('div',{className:'fila',style:'margin-top:.8rem;align-items:end'});
+  const bComp=el('button',{className:'sec'},'Completar del stock');
+  const bConf=el('button',{},'Confirmar baja');
+  filaC.append(el('div',{style:'flex:0 0 auto'},bComp),el('div',{style:'flex:0 0 auto'},bConf),el('div'));
+  t.append(filaC);
+  zona.append(t);
+  const res=el('div'); zona.append(res);
+
+  async function subir(nums){
+    try{
+      const r=await rpc('sumar_a_salida',{p_salida_id:SALIDA.id,p_numeros:nums});
+      res.innerHTML='';
+      const box=el('div',{className:'tarjeta'});
+      box.append(el('div',{},`Tomadas ${r.tomadas}`+(r.ya_en_esta?` · ya estaban ${r.ya_en_esta}`:'')));
+      if(r.no_activas&&r.no_activas.length)box.append(el('div',{className:'aviso'},'No activas: '+r.no_activas.map(x=>x.caravana+' ('+x.estado+')').slice(0,20).join(', ')));
+      if(r.no_existen&&r.no_existen.length)box.append(el('div',{className:'aviso'},'No existen: '+r.no_existen.slice(0,20).join(', ')));
+      res.append(box); await estadoSalida(res);
+    }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  }
+  bSub.onclick=async()=>{
+    let nums=desglosar(ta.value);
+    if(file.files[0]) nums=nums.concat(await numerosDeArchivo(file.files[0]));
+    if(!nums.length){res.innerHTML='';res.append(el('div',{className:'aviso'},'Subí un archivo o pegá los números.'));return;}
+    subir(nums);
+  };
+  bComp.onclick=async()=>{
+    try{ const r=await rpc('completar_salida',{p_salida_id:SALIDA.id});
+      res.innerHTML='';res.append(el('div',{className:'tarjeta'},el('div',{},`Completadas del stock: ${r.tomadas} (faltaban ${r.pedidas})`)));
+      await estadoSalida(res);
+    }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  };
+  bConf.onclick=async()=>{
+    if(!confirm('¿Confirmar la baja? Las caravanas de la salida quedan dadas de baja.'))return;
+    try{ const r=await rpc('confirmar_salida',{p_salida_id:SALIDA.id});
+      res.innerHTML='';res.append(el('div',{className:'tarjeta'},el('h3',{},'Baja confirmada ✔'),el('div',{},`${r.confirmadas} caravanas dadas de baja.`)));
+      SALIDA=null;
+    }catch(e){res.innerHTML='';res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
+  };
+}
+async function estadoSalida(res){
+  try{
+    const {data}=await sb.from('v_caravanas').select('numero,categoria').eq('salida_id',SALIDA.id);
+    const box=el('div',{className:'tarjeta'});
+    box.append(el('div',{className:'mut'},`En esta salida: ${data.length} de ${SALIDA.objetivo}`));
+    res.append(box);
+  }catch(e){}
+}
+
+// ======================================================================
+//  VISTA · USUARIOS / CONFIG
+// ======================================================================
+async function vUsuarios(cont){
+  cont.append(el('h2',{},'Configuración'));
+
+  // usuarios / roles
+  const t=el('div',{className:'tarjeta'});
+  t.append(el('h3',{},'Usuarios y roles'));
+  t.append(el('div',{className:'mut',style:'margin-bottom:.5rem'},
+    'Los usuarios se crean en Supabase (Authentication → Add user). Acá les asignás el rol.'));
+  const cont2=el('div'); t.append(cont2); cont.append(t);
+  try{
+    const {data}=await sb.from('perfiles').select('id,nombre,rol,activo');
+    const tb=el('table');
+    tb.append(el('thead',{},filaTH(['Usuario','Rol','Activo',''])));
+    const tbody=el('tbody');
+    (data||[]).forEach(u=>{
+      const sel=el('select');['consulta','admin'].forEach(r=>sel.append(el('option',{value:r,selected:u.rol===r},r)));
+      const b=el('button',{className:'sec'},'Guardar');
+      b.onclick=async()=>{try{await rpc('set_rol',{p_uid:u.id,p_rol:sel.value,p_activo:true});b.textContent='✔';setTimeout(()=>b.textContent='Guardar',1200);}catch(e){alert(errMsg(e));}};
+      tbody.append(el('tr',{},td(u.nombre||u.id),el('td',{},sel),td(u.activo?'Sí':'No'),el('td',{},b)));
+    });
+    tb.append(tbody);cont2.append(tb);
+  }catch(e){cont2.append(el('div',{className:'aviso'},'No pude leer los usuarios: '+errMsg(e)));}
+
+  // config SENASA / datos generales
+  const c=el('div',{className:'tarjeta'});
+  c.append(el('h3',{},'Datos generales y SENASA'));
+  const claves=[['propietario','Propietario'],['renspa','RENSPA'],['cuit','CUIT (para SENASA)'],['senasa_token','Token SENASA']];
+  const inputs={};
+  try{
+    const {data}=await sb.from('config').select('clave,valor');
+    const map=Object.fromEntries((data||[]).map(x=>[x.clave,x.valor]));
+    const fila=el('div',{className:'fila'});
+    claves.forEach(([k,lbl])=>{const i=el('input',{value:map[k]||''});inputs[k]=i;fila.append(el('div',{},el('label',{},lbl),i));});
+    c.append(fila);
+    const b=el('button',{style:'margin-top:.7rem'},'Guardar configuración');
+    b.onclick=async()=>{try{for(const [k] of claves){await rpc('set_config',{p_clave:k,p_valor:inputs[k].value});}b.textContent='Guardado ✔';setTimeout(()=>b.textContent='Guardar configuración',1200);}catch(e){alert(errMsg(e));}};
+    c.append(b);
+    c.append(el('div',{className:'aviso',style:'margin-top:.7rem'},
+      'La consulta automática a SENASA todavía espera la URL con token de SENASA. Cuando la tengamos, se activa desde acá sin tocar el resto.'));
+  }catch(e){c.append(el('div',{className:'aviso'},'No pude leer la configuración: '+errMsg(e)));}
+  cont.append(c);
+}
+
+// ---- utilidades ----
+function hoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+// ---- eventos ----
+document.getElementById('btnLogin').onclick=login;
+document.getElementById('pass').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+document.getElementById('btnSalir').onclick=salir;
+arrancar();
+</script>
+</body>
+</html>
