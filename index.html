@@ -233,24 +233,63 @@ async function vPanel(cont){
   try{ p=await rpc('panel'); }catch(e){ cargando.textContent='Error: '+errMsg(e); return; }
   cargando.remove();
 
+  const tarjeta=(n,t,color,onClick)=>{
+    const k=el('div',{className:'kpi'});
+    k.append(el('div',{className:'n',style:`color:${color||'var(--tinta)'}`},fmt(n)),el('div',{className:'t'},t));
+    if(onClick){ k.style.cursor='pointer';
+      k.append(el('div',{className:'mut',style:'font-size:.72rem;margin-top:.3rem'},'tocá para ver ▾'));
+      k.onclick=onClick; }
+    return k;
+  };
+
+  // --- render del detalle de una tarjeta ---
+  async function cargarDet(cont, tipo, cat, titulo){
+    cont.innerHTML=''; const load=el('div',{className:'mut'},'Cargando…'); cont.append(load);
+    let d; try{ d=await rpc('panel_detalle',{p_tipo:tipo,p_categoria:cat||''}); }
+    catch(e){ cont.innerHTML=''; cont.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); return; }
+    cont.innerHTML='';
+    const box=el('div',{className:'tarjeta'});
+    if(d.tipo==='cat'){
+      box.append(el('h3',{},titulo));
+      const tb=el('table'); tb.append(el('thead',{},filaTH(['Categoría','Cantidad'])));
+      const tbody=el('tbody'); (d.items||[]).forEach(x=>tbody.append(el('tr',{},td(x.categoria),el('td',{className:'num'},fmt(x.n)))));
+      tb.append(tbody); box.append(tb);
+    }else if(d.tipo==='rangos'){
+      box.append(el('h3',{},'Vírgenes por tanda de numeración'));
+      const tb=el('table'); tb.append(el('thead',{},filaTH(['Desde','Hasta','Cantidad'])));
+      const tbody=el('tbody'); (d.items||[]).forEach(x=>tbody.append(el('tr',{},td(x.desde,'num'),td(x.hasta,'num'),el('td',{className:'num'},fmt(x.cantidad)))));
+      tb.append(tbody); box.append(tb);
+      if(d.no_num>0) box.append(el('div',{className:'mut',style:'margin-top:.3rem'},`+ ${d.no_num} vírgenes con numeración vieja (letras)`));
+      if(!(d.items||[]).length && !d.no_num) box.append(el('div',{className:'mut'},'No hay vírgenes en stock.'));
+    }else if(d.tipo==='edad'){
+      box.append(el('h3',{},`${d.categoria} activas: ${fmt(d.cantidad)}`),
+        el('div',{},`Primera activación (la más vieja): ${d.primera||'—'}`),
+        el('div',{},`Última activación (la más nueva): ${d.ultima||'—'}`));
+    }else{ box.append(el('div',{className:'mut'},'Sin datos.')); }
+    cont.append(box);
+  }
+
   const kpis=el('div',{className:'kpis'});
-  const tarjeta=(n,t,color)=>{const k=el('div',{className:'kpi'});
-    k.append(el('div',{className:'n',style:`color:${color||'var(--tinta)'}`},fmt(n)),el('div',{className:'t'},t));return k;};
+  const detTop=el('div',{style:'margin:.3rem 0 1rem'});
   kpis.append(
-    tarjeta(p.activas_90_total,'Activas con 90 días cumplidos','var(--verde)'),
-    tarjeta(p.virgenes,'Caravanas vírgenes (en stock)','var(--azul)'),
-    tarjeta(p.total,'Total de caravanas (histórico)'),
+    tarjeta(p.activas_90_total,'Activas con 90 días cumplidos','var(--verde)',
+            ()=>cargarDet(detTop,'cat90','','Categorías con 90 días cumplidos')),
+    tarjeta(p.virgenes,'Caravanas vírgenes (en stock)','var(--azul)',
+            ()=>cargarDet(detTop,'virgenes','','')),
+    tarjeta(p.total,'Total de caravanas (histórico)',null,
+            ()=>cargarDet(detTop,'total','','Composición total (histórico)')),
   );
-  cont.append(kpis);
+  cont.append(kpis, detTop);
 
   // desglose 90 días
   const d90=el('div',{className:'tarjeta'});
   d90.append(el('h3',{},'Con 90 días cumplidos, por categoría'));
+  const detCat=el('div',{style:'margin-top:.6rem'});
   const f=el('div',{className:'kpis'});
-  f.append(tarjeta(p.activas_90_vaca,'Vaca','var(--azul)'),
-           tarjeta(p.activas_90_hembra,'Hembra','var(--rosa)'),
-           tarjeta(p.activas_90_macho,'Macho','var(--naranja)'));
-  d90.append(f); cont.append(d90);
+  f.append(tarjeta(p.activas_90_vaca,'Vaca','var(--azul)',()=>cargarDet(detCat,'edad','Vaca','')),
+           tarjeta(p.activas_90_hembra,'Hembra','var(--rosa)',()=>cargarDet(detCat,'edad','Hembra','')),
+           tarjeta(p.activas_90_macho,'Macho','var(--naranja)',()=>cargarDet(detCat,'edad','Macho','')));
+  d90.append(f, detCat); cont.append(d90);
 
   // composición del rodeo activo (donut)
   const comp=(p.composicion||[]).filter(x=>x.n>0);
