@@ -991,6 +991,18 @@ async function estadoSalida(res){
 async function vUsuarios(cont){
   cont.append(el('h2',{},'Configuración'));
 
+  // --- Backup / exportar a Excel ---
+  const bk=el('div',{className:'tarjeta'});
+  bk.append(el('h3',{},'Backup (respaldo)'),
+    el('div',{className:'mut',style:'margin-bottom:.5rem'},
+      'Descargá todas las caravanas en un Excel. Consejo: configurá Chrome para que baje a tu carpeta de OneDrive, así queda el respaldo al lado del Excel viejo.'));
+  const bBk=el('button',{},'Descargar backup (Excel)');
+  bBk.onclick=()=>exportarBackup(bBk);
+  bk.append(bBk);
+  const bkInfo=el('div',{className:'mut',style:'margin-top:.4rem'},'');
+  bk.append(bkInfo);
+  cont.append(bk);
+
   // usuarios / roles
   const t=el('div',{className:'tarjeta'});
   t.append(el('h3',{},'Usuarios y roles'));
@@ -1033,6 +1045,30 @@ async function vUsuarios(cont){
 
 // ---- utilidades ----
 function hoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+// Descarga un Excel con TODAS las caravanas (respaldo).
+async function exportarBackup(btn){
+  const txt=btn.textContent; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Generando…';
+  try{
+    let rows=[]; let desde=0; const pag=1000;
+    while(true){
+      const {data,error}=await sb.from('v_caravanas')
+        .select('numero,numero_orig,categoria,estado,lote,propietario,fecha_ingreso,fecha_40,fecha_90,senasa_estado')
+        .order('numero').range(desde,desde+pag-1);
+      if(error) throw error;
+      rows=rows.concat(data||[]);
+      if(!data || data.length<pag) break;
+      desde+=pag;
+    }
+    const enc=['CARAVANA','CARAVANA ORIG','CATEGORIA','ESTADO','LOTE','PROPIETARIO','FECHA INGRESO','FECHA 40 DIAS','FECHA 90 DIAS','SENASA'];
+    const aoa=[enc].concat(rows.map(r=>[r.numero,r.numero_orig||'',r.categoria||'',r.estado,r.lote||'',r.propietario||'',
+      r.fecha_ingreso||'',r.fecha_40||'',r.fecha_90||'',r.senasa_estado||'']));
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'caravanas');
+    XLSX.writeFile(wb,'caravanas_backup_'+hoyISO()+'.xlsx');
+  }catch(e){ alert('No se pudo generar el backup: '+errMsg(e)); }
+  btn.disabled=false; btn.textContent=txt;
+}
 
 // ---- eventos ----
 document.getElementById('btnLogin').onclick=login;
