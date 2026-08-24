@@ -802,6 +802,7 @@ async function abrirCaja(rotulo,tr){
   const next=tr.nextSibling;
   if(next && next.__detalle){ next.remove(); return; }
   let d; try{ d=await rpc('lote_detalle',{p_rotulo:rotulo}); }catch(e){ return; }
+  const esAdmin = ROL==='admin';
   const trd=el('tr'); trd.__detalle=true;
   const tdd=el('td'); tdd.colSpan=6;
   const inner=el('div',{className:'tarjeta',style:'margin:.3rem 0;background:#f8fafc'});
@@ -810,14 +811,57 @@ async function abrirCaja(rotulo,tr){
   const cumple90 = f90.length ? f90[f90.length-1] : null;
   inner.append(el('h3',{},'Caja '+rotulo+' — '+(d?d.length:0)+' caravanas'
     + (cumple90 ? '  ·  cumple 90 días: '+cumple90 : '')));
+
+  // Barra de edición (sólo admin, sólo cajas reales)
+  const editable = esAdmin && rotulo!=='(sin lote)';
+  let bSacar, bBorrar;
+  if(editable){
+    inner.append(el('div',{className:'mut',style:'margin-bottom:.4rem'},
+      'Tildá las caravanas que querés sacar de la caja, o eliminá el rótulo entero. Las que saques vuelven a CLASIFICAR (siguen activas).'));
+    const barra=el('div',{className:'fila',style:'margin-bottom:.5rem'});
+    bSacar=el('button',{className:'sec'},'Sacar seleccionadas de la caja');
+    bBorrar=el('button',{className:'gris'},'Eliminar rótulo de la caja');
+    barra.append(el('div',{style:'flex:0 0 auto'},bSacar),el('div',{style:'flex:0 0 auto'},bBorrar),el('div'));
+    inner.append(barra);
+  }
+
   const tb=el('table');
-  tb.append(el('thead',{},filaTH(['Caravana','Categoría','Estado','Activación','40 días','90 días'])));
+  const cols=(editable?['✓']:[]).concat(['Caravana','Categoría','Estado','Activación','40 días','90 días']);
+  tb.append(el('thead',{},filaTH(cols)));
   const tbody=el('tbody');
-  (d||[]).slice(0,300).forEach(f=>tbody.append(el('tr',{},td(f.numero,'num'),td(f.categoria),
-    tdChip(f.activa?'activa':f.estado,f.activa?'ok':'warn'),td(f.fecha_activacion||'—','num'),
-    td(f.fecha_40||'—','num'),td(f.fecha_90||'—','num'))));
+  (d||[]).slice(0,300).forEach(f=>{
+    const celdas=[td(f.numero,'num'),td(f.categoria),
+      tdChip(f.activa?'activa':f.estado,f.activa?'ok':'warn'),td(f.fecha_activacion||'—','num'),
+      td(f.fecha_40||'—','num'),td(f.fecha_90||'—','num')];
+    if(editable){
+      const cb=el('input',{type:'checkbox',value:f.id,className:'cbCaja'});
+      const tdc=el('td'); tdc.append(cb);
+      celdas.unshift(tdc);
+    }
+    tbody.append(el('tr',{},...celdas));
+  });
   tb.append(tbody); inner.append(tb);
   if((d||[]).length>300) inner.append(el('div',{className:'mut',style:'margin-top:.3rem'},'… y '+(d.length-300)+' más'));
+
+  if(editable){
+    bSacar.onclick=async()=>{
+      const ids=[...inner.querySelectorAll('input.cbCaja:checked')].map(c=>Number(c.value));
+      if(!ids.length){ alert('Tildá al menos una caravana para sacar.'); return; }
+      if(!confirm(`¿Sacar ${ids.length} caravana(s) de la caja «${rotulo}»? Vuelven a CLASIFICAR (siguen activas).`)) return;
+      bSacar.disabled=true; bSacar.innerHTML='<span class="spin"></span>';
+      try{ const r=await rpc('quitar_de_lote',{p_ids:ids});
+        alert(`Se sacaron ${r.sacadas} caravana(s) de la caja.`); irA('lotes');
+      }catch(e){ alert('Error: '+errMsg(e)); bSacar.disabled=false; bSacar.textContent='Sacar seleccionadas de la caja'; }
+    };
+    bBorrar.onclick=async()=>{
+      if(!confirm(`¿Eliminar el rótulo de la caja «${rotulo}»? Sus ${d?d.length:0} caravanas vuelven a CLASIFICAR (siguen activas) y la caja desaparece.`)) return;
+      bBorrar.disabled=true; bBorrar.innerHTML='<span class="spin"></span>';
+      try{ const r=await rpc('quitar_de_lote',{p_rotulo:rotulo});
+        alert(`Caja «${rotulo}» eliminada. ${r.sacadas} caravana(s) volvieron a CLASIFICAR.`); irA('lotes');
+      }catch(e){ alert('Error: '+errMsg(e)); bBorrar.disabled=false; bBorrar.textContent='Eliminar rótulo de la caja'; }
+    };
+  }
+
   tdd.append(inner); trd.append(tdd);
   tr.parentNode.insertBefore(trd,tr.nextSibling);
 }
