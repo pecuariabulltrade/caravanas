@@ -770,12 +770,12 @@ async function pintarResumen(res){
       if(fc.value) arr=arr.filter(x=>x.categoria===fc.value);
       if(fd.value) arr=arr.filter(x=>x.fecha===fd.value);
       const tb=el('table');
-      tb.append(el('thead',{},filaTH(['Caja','Categoría','Total','Activas','Vírgenes'])));
+      tb.append(el('thead',{},filaTH(['Caja','Categoría','Cumple 90 días','Total','Activas','Vírgenes'])));
       const tbody=el('tbody');
       arr.forEach(x=>{
         const tr=el('tr',{style:'cursor:pointer'});
         const catTd=x.mixta ? tdChip('⚠ '+(x.categoria||'VARIAS'),'warn') : td(x.categoria||'—');
-        tr.append(td(x.rotulo),catTd,td(x.total,'num'),td(x.activas,'num'),td(x.virgenes,'num'));
+        tr.append(td(x.rotulo),catTd,td(x.fecha_90||'—','num'),td(x.total,'num'),td(x.activas,'num'),td(x.virgenes,'num'));
         tr.onclick=()=>abrirCaja(x.rotulo,tr);
         tbody.append(tr);
       });
@@ -791,9 +791,13 @@ async function abrirCaja(rotulo,tr){
   if(next && next.__detalle){ next.remove(); return; }
   let d; try{ d=await rpc('lote_detalle',{p_rotulo:rotulo}); }catch(e){ return; }
   const trd=el('tr'); trd.__detalle=true;
-  const tdd=el('td'); tdd.colSpan=5;
+  const tdd=el('td'); tdd.colSpan=6;
   const inner=el('div',{className:'tarjeta',style:'margin:.3rem 0;background:#f8fafc'});
-  inner.append(el('h3',{},'Caja '+rotulo+' — '+(d?d.length:0)+' caravanas'));
+  // fecha en que TODA la caja cumple 90 días = la más tardía de las 90 días
+  const f90=(d||[]).map(f=>f.fecha_90).filter(Boolean).sort();
+  const cumple90 = f90.length ? f90[f90.length-1] : null;
+  inner.append(el('h3',{},'Caja '+rotulo+' — '+(d?d.length:0)+' caravanas'
+    + (cumple90 ? '  ·  cumple 90 días: '+cumple90 : '')));
   const tb=el('table');
   tb.append(el('thead',{},filaTH(['Caravana','Categoría','Estado','Activación','40 días','90 días'])));
   const tbody=el('tbody');
