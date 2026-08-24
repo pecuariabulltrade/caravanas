@@ -695,10 +695,14 @@ function vLotes(cont){
         bTodas.onclick=()=>box.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true);
         bNada.onclick=()=>box.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
         bRotSel.onclick=async()=>{
-          if(!$('#lRot').value.trim()){alert('Escribí el rótulo de la caja arriba.');return;}
+          const rot=$('#lRot').value.trim();
+          if(!rot){alert('Escribí el rótulo de la caja arriba.');return;}
           const ids=[...box.querySelectorAll('input[type=checkbox]:checked')].map(c=>Number(c.value));
           if(!ids.length){alert('Tildá al menos una caravana.');return;}
-          if(!confirm(`¿Rotular ${ids.length} caravanas como caja «${$('#lRot').value}»?`))return;
+          const ya=await loteExiste(rot);
+          const msg = ya>0 ? `⚠ La caja «${rot}» YA EXISTE (tiene ${ya} caravanas). ¿Igual querés guardar estas ${ids.length} en esa misma caja?`
+                           : `¿Rotular ${ids.length} caravanas como caja «${rot}»?`;
+          if(!confirm(msg))return;
           bRotSel.disabled=true; bRotSel.innerHTML='<span class="spin"></span>';
           try{
             const r=await rpc('asignar_lote',{p_rotulo:$('#lRot').value,p_ids:ids});
@@ -714,8 +718,12 @@ function vLotes(cont){
     }catch(e){res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
   };
   bRot.onclick=async()=>{
-    if(!$('#lRot').value.trim()){res.innerHTML='';res.append(el('div',{className:'aviso'},'Escribí el rótulo.'));return;}
-    if(!confirm('¿Rotular estas caravanas como caja «'+$('#lRot').value+'»?'))return;
+    const rot=$('#lRot').value.trim();
+    if(!rot){res.innerHTML='';res.append(el('div',{className:'aviso'},'Escribí el rótulo.'));return;}
+    const ya=await loteExiste(rot);
+    const msg = ya>0 ? `⚠ La caja «${rot}» YA EXISTE (tiene ${ya} caravanas). ¿Igual querés guardar en esa misma caja?`
+                     : `¿Rotular estas caravanas como caja «${rot}»?`;
+    if(!confirm(msg))return;
     bRot.disabled=true;bRot.innerHTML='<span class="spin"></span>';
     try{
       const r=await rpc('asignar_lote',args());
@@ -729,6 +737,13 @@ function vLotes(cont){
     bRot.disabled=false;bRot.textContent='Rotular';
   };
   pintarResumen(res);
+}
+// Cuántas caravanas hay ya en una caja con ese rótulo (0 = no existe).
+async function loteExiste(rotulo){
+  try{
+    const {count}=await sb.from('v_caravanas').select('id',{count:'exact',head:true}).eq('lote',rotulo);
+    return count||0;
+  }catch(e){ return 0; }
 }
 async function pintarResumen(res){
   try{
