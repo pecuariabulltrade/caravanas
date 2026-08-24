@@ -664,6 +664,18 @@ function vLotes(cont){
       if(p.mixta) box.append(el('div',{className:'aviso'},'⚠ Ojo: esta selección mezcla categorías. Elegí una categoría arriba para que la caja quede de una sola.'));
       const its=(p.items||[]);
       if(its.length){
+        // Fecha de la última activación de la caja y cuándo cumple 90 días
+        const fechasAct=its.map(i=>i.fecha_activacion).filter(Boolean).sort();
+        if(fechasAct.length){
+          const primAct=fechasAct[0], ultAct=fechasAct[fechasAct.length-1];
+          const c90=sumarDias(ultAct,90);
+          const linea=el('div',{className:'tarjeta',style:'margin:.3rem 0;background:#f0fdf4;border-color:#86efac'});
+          linea.append(el('div',{},el('b',{},'Última activación de la caja: '),ultAct,
+            '  ·  ',el('b',{},'Cumple 90 días: '),c90));
+          if(primAct!==ultAct) linea.append(el('div',{className:'mut',style:'margin-top:.2rem'},
+            `(primera activación ${primAct} — la caja completa los 90 días cuando la última llega, el ${c90})`));
+          box.append(linea);
+        }
         box.append(el('div',{className:'mut',style:'margin-top:.3rem'},'Tildá las que querés rotular (vienen todas marcadas).'));
         const acc=el('div',{className:'fila',style:'margin:.5rem 0'});
         const bTodas=el('button',{className:'gris'},'Marcar todas');
@@ -1106,6 +1118,8 @@ async function vUsuarios(cont){
 
 // ---- utilidades ----
 function hoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// Suma N días a una fecha 'YYYY-MM-DD' y devuelve 'YYYY-MM-DD'.
+function sumarDias(iso,n){ if(!iso) return ''; const p=String(iso).slice(0,10).split('-'); const d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2])); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
 
 // Descarga un Excel con TODAS las caravanas (respaldo).
 async function exportarBackup(btn){
