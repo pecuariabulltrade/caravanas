@@ -662,12 +662,54 @@ function vLotes(cont){
       const box=el('div',{className:'tarjeta'});
       box.append(el('h3',{},'Prevista'),el('div',{className:'mut'},`Coinciden ${p.total_filtro} · tomaría ${p.tomaria}`));
       if(p.mixta) box.append(el('div',{className:'aviso'},'⚠ Ojo: esta selección mezcla categorías. Elegí una categoría arriba para que la caja quede de una sola.'));
-      const its=(p.items||[]).slice(0,15);
-      if(its.length){const tb=el('table',{style:'margin-top:.5rem'});
-        tb.append(el('thead',{},filaTH(['Caravana','Categoría','Estado','Lote actual'])));
-        const tbody=el('tbody');its.forEach(i=>tbody.append(el('tr',{},td(i.numero,'num'),td(i.categoria||'—'),td(i.estado),td(i.lote||'—'))));
-        tb.append(tbody);box.append(tb);
-        if(p.tomaria>its.length)box.append(el('div',{className:'mut',style:'margin-top:.3rem'},`… y ${p.tomaria-its.length} más`));}
+      const its=(p.items||[]);
+      if(its.length){
+        box.append(el('div',{className:'mut',style:'margin-top:.3rem'},'Tildá las que querés rotular (vienen todas marcadas).'));
+        const acc=el('div',{className:'fila',style:'margin:.5rem 0'});
+        const bTodas=el('button',{className:'gris'},'Marcar todas');
+        const bNada=el('button',{className:'gris'},'Desmarcar todas');
+        const bRotSel=el('button',{},'Rotular seleccionadas');
+        acc.append(el('div',{style:'flex:0 0 auto'},bTodas),el('div',{style:'flex:0 0 auto'},bNada),
+                   el('div',{style:'flex:0 0 auto'},bRotSel),el('div'));
+        box.append(acc);
+        const tb=el('table');
+        tb.append(el('thead',{},filaTH(['✓','Caravana','Categoría','Estado','Lote actual'])));
+        const tbody=el('tbody'); tb.append(tbody); box.append(tb);
+        let mostradas=0;
+        const pintar=(n)=>{ its.slice(mostradas,mostradas+n).forEach(i=>{
+            const cb=el('input',{type:'checkbox',value:i.id}); cb.checked=true;
+            const tdc=el('td'); tdc.append(cb);
+            tbody.append(el('tr',{},tdc,td(i.numero,'num'),td(i.categoria||'—'),td(i.estado),td(i.lote||'—'))); });
+          mostradas=Math.min(mostradas+n,its.length); };
+        pintar(15);
+        const pie=el('div',{style:'margin-top:.3rem'}); box.append(pie);
+        const actualizar=()=>{ pie.innerHTML='';
+          if(mostradas<its.length){
+            const link=el('a',{style:'cursor:pointer;font-weight:600'},`▼ Ver las ${its.length-mostradas} restantes`);
+            link.onclick=()=>{ pintar(its.length); actualizar(); };
+            pie.append(link);
+          } else if(its.length>15){ pie.append(el('span',{className:'mut'},`Mostrando las ${its.length}`)); }
+          if(p.tomaria>its.length) pie.append(el('div',{className:'mut'},`(la caja tomaría ${p.tomaria}; la prevista muestra hasta ${its.length} — expandí para elegir más)`));
+        };
+        actualizar();
+        bTodas.onclick=()=>box.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true);
+        bNada.onclick=()=>box.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
+        bRotSel.onclick=async()=>{
+          if(!$('#lRot').value.trim()){alert('Escribí el rótulo de la caja arriba.');return;}
+          const ids=[...box.querySelectorAll('input[type=checkbox]:checked')].map(c=>Number(c.value));
+          if(!ids.length){alert('Tildá al menos una caravana.');return;}
+          if(!confirm(`¿Rotular ${ids.length} caravanas como caja «${$('#lRot').value}»?`))return;
+          bRotSel.disabled=true; bRotSel.innerHTML='<span class="spin"></span>';
+          try{
+            const r=await rpc('asignar_lote',{p_rotulo:$('#lRot').value,p_ids:ids});
+            res.innerHTML='';
+            res.append(el('div',{className:'tarjeta'},el('h3',{},'Rotuladas ✔'),
+              el('div',{},`${r.asignadas} caravanas → caja ${r.rotulo}`),
+              r.mixta?el('div',{className:'aviso'},'⚠ Esta caja quedó con más de una categoría.'):null));
+            await pintarResumen(res);
+          }catch(e){ alert('Error: '+errMsg(e)); bRotSel.disabled=false; bRotSel.textContent='Rotular seleccionadas'; }
+        };
+      }
       res.append(box);
     }catch(e){res.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
   };
