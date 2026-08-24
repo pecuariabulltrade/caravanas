@@ -673,13 +673,13 @@ function vLotes(cont){
                    el('div',{style:'flex:0 0 auto'},bRotSel),el('div'));
         box.append(acc);
         const tb=el('table');
-        tb.append(el('thead',{},filaTH(['✓','Caravana','Categoría','Estado','Lote actual'])));
+        tb.append(el('thead',{},filaTH(['✓','Caravana','Categoría','Activación','Lote actual'])));
         const tbody=el('tbody'); tb.append(tbody); box.append(tb);
         let mostradas=0;
         const pintar=(n)=>{ its.slice(mostradas,mostradas+n).forEach(i=>{
             const cb=el('input',{type:'checkbox',value:i.id}); cb.checked=true;
             const tdc=el('td'); tdc.append(cb);
-            tbody.append(el('tr',{},tdc,td(i.numero,'num'),td(i.categoria||'—'),td(i.estado),td(i.lote||'—'))); });
+            tbody.append(el('tr',{},tdc,td(i.numero,'num'),td(i.categoria||'—'),td(i.fecha_activacion||'—','num'),td(i.lote||'—'))); });
           mostradas=Math.min(mostradas+n,its.length); };
         pintar(15);
         const pie=el('div',{style:'margin-top:.3rem'}); box.append(pie);
