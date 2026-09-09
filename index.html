@@ -418,10 +418,10 @@ function vGuia(cont){
   // fecha + origen + guia
   t.append(el('h3',{style:'margin-top:1rem'},'2 · Fecha, origen y número de guía'));
   const fila2=el('div',{className:'fila'});
-  const fecha=el('input',{type:'date',value:hoyISO()});
+  const fecha=campoFecha();
   const origen=el('input',{placeholder:'De quién vienen'});
   const numg=el('input',{placeholder:'N° de guía (opcional)'});
-  fila2.append(el('div',{},el('label',{},'Fecha de ingreso'),fecha),
+  fila2.append(el('div',{},el('label',{},'Fecha de ingreso'),fecha.el),
                el('div',{},el('label',{},'Origen'),origen),
                el('div',{},el('label',{},'N° de guía'),numg));
   t.append(fila2);
@@ -476,7 +476,8 @@ function vGuia(cont){
     salida.innerHTML=''; const g=grupos();
     if(!g.length){salida.append(el('div',{className:'aviso'},'Indicá la cantidad.'));return;}
     try{
-      const p=await rpc('previsualizar_carga',{p_grupos:g,p_fecha:fecha.value,p_origen:origen.value});
+      const fiso=fecha.getISO(); if(!fiso){salida.append(el('div',{className:'aviso'},'Revisá la fecha de ingreso (DÍA/MES/AÑO).'));return;}
+      const p=await rpc('previsualizar_carga',{p_grupos:g,p_fecha:fiso,p_origen:origen.value});
       salida.append(previstaBox(p));
     }catch(e){salida.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
   };
@@ -484,10 +485,11 @@ function vGuia(cont){
     const g=grupos();
     if(!g.length){salida.append(el('div',{className:'aviso'},'Indicá la cantidad.'));return;}
     if(!origen.value.trim()){salida.append(el('div',{className:'aviso'},'Cargá el origen.'));return;}
-    if(!confirm('¿Guardar el cierre de guía? Se van a activar las caravanas.'))return;
+    const fiso=fecha.getISO(); if(!fiso){salida.append(el('div',{className:'aviso'},'Revisá la fecha de ingreso (DÍA/MES/AÑO).'));return;}
+    if(!confirm('¿Guardar el cierre de guía con fecha '+fecha.input.value+'? Se van a activar las caravanas.'))return;
     bGuardar.disabled=true; bGuardar.innerHTML='<span class="spin"></span>';
     try{
-      const r=await rpc('cargar_guia',{p_grupos:g,p_fecha:fecha.value,p_origen:origen.value,p_numero:numg.value||'S/N',p_renspa:'',p_propietario:''});
+      const r=await rpc('cargar_guia',{p_grupos:g,p_fecha:fiso,p_origen:origen.value,p_numero:numg.value||'S/N',p_renspa:'',p_propietario:''});
       salida.innerHTML='';
       const box=el('div',{className:'tarjeta'});
       box.append(el('h3',{},'Cierre guardado ✔'),
@@ -549,8 +551,8 @@ function vVirgenes(cont){
   t.append(el('label',{},'Números'),ta);
   const fila=el('div',{className:'fila',style:'margin-top:.6rem'});
   const prov=el('input',{placeholder:'Proveedor (opcional)'});
-  const fc=el('input',{type:'date',value:hoyISO()});
-  fila.append(el('div',{},el('label',{},'Proveedor'),prov),el('div',{},el('label',{},'Fecha de compra'),fc));
+  const fc=campoFecha();
+  fila.append(el('div',{},el('label',{},'Proveedor'),prov),el('div',{},el('label',{},'Fecha de compra'),fc.el));
   t.append(fila);
   const filaX=el('div',{className:'fila',style:'margin-top:.6rem;align-items:end'});
   const file=el('input',{type:'file',accept:'.xlsx,.xls,.csv'});
@@ -589,7 +591,7 @@ function vVirgenes(cont){
     if(!ta.value.trim()){res.innerHTML='';res.append(el('div',{className:'aviso'},'Pegá o subí los números.'));return;}
     b.disabled=true;b.innerHTML='<span class="spin"></span>';
     try{
-      const r=await rpc('agregar_virgenes',{p_texto:ta.value,p_proveedor:prov.value,p_fecha_compra:fc.value});
+      const r=await rpc('agregar_virgenes',{p_texto:ta.value,p_proveedor:prov.value,p_fecha_compra:fc.getISO()||null});
       res.innerHTML='';
       res.append(el('div',{className:'tarjeta'},
         el('h3',{},'Listo ✔'),
@@ -768,10 +770,10 @@ async function pintarResumen(res){
     const q=el('input',{placeholder:'Buscar por rótulo (ej: 25-2)'});
     const fc=el('select');
     [['','Todas las categorías'],['Vaca','Vaca'],['Toro','Toro'],['Macho','Macho'],['Hembra','Hembra'],['VARIAS','⚠ Mezcladas']].forEach(([v,tx])=>fc.append(el('option',{value:v},tx)));
-    const fd=el('input',{type:'date'});
+    const fd=campoFecha(null,{vacio:true});
     ff.append(el('div',{style:'flex:2'},el('label',{},'Buscar caja'),q),
               el('div',{},el('label',{},'Categoría'),fc),
-              el('div',{},el('label',{},'Fecha activación'),fd));
+              el('div',{},el('label',{},'Fecha activación'),fd.el));
     box.append(ff);
     const zona=el('div'); box.append(zona);
     const render=()=>{
@@ -780,7 +782,7 @@ async function pintarResumen(res){
       const qt=(q.value||'').trim().toUpperCase();
       if(qt) arr=arr.filter(x=>String(x.rotulo).toUpperCase().includes(qt));
       if(fc.value) arr=arr.filter(x=>x.categoria===fc.value);
-      if(fd.value) arr=arr.filter(x=>x.fecha===fd.value);
+      const fdIso=fd.getISO(); if(fdIso) arr=arr.filter(x=>x.fecha===fdIso);
       const tb=el('table');
       tb.append(el('thead',{},filaTH(['Caja','Categoría','Cumple 90 días','Total','Activas','Vírgenes'])));
       const tbody=el('tbody');
@@ -794,7 +796,7 @@ async function pintarResumen(res){
       tb.append(tbody); zona.append(tb);
       zona.append(el('div',{className:'mut',style:'margin-top:.4rem'},`${arr.length} caja(s)`));
     };
-    q.oninput=render; fc.onchange=render; fd.onchange=render; render();
+    q.oninput=render; fc.onchange=render; fd.input.addEventListener('input',render); render();
     res.append(box);
   }catch(e){}
 }
@@ -912,9 +914,9 @@ function vBajas(cont){
   const num=el('input',{placeholder:'N° (opcional)'});
   const dest=el('input',{placeholder:'Destino'});
   const obj=el('input',{type:'number',min:'0',placeholder:'Cuántas salen'});
-  const fecha=el('input',{type:'date',value:hoyISO()});
+  const fecha=campoFecha();
   fila.append(el('div',{},el('label',{},'N°'),num),el('div',{},el('label',{},'Destino'),dest),
-              el('div',{},el('label',{},'Objetivo'),obj),el('div',{},el('label',{},'Fecha'),fecha));
+              el('div',{},el('label',{},'Objetivo'),obj),el('div',{},el('label',{},'Fecha'),fecha.el));
   t.append(fila);
   const b=el('button',{style:'margin-top:.7rem'},'Crear salida');
   t.append(b); cont.append(t);
@@ -961,8 +963,9 @@ function vBajas(cont){
   verHistSalidas();
 
   b.onclick=async()=>{
+    const fiso=fecha.getISO(); if(!fiso){zona.innerHTML='';zona.append(el('div',{className:'aviso'},'Revisá la fecha (DÍA/MES/AÑO).'));return;}
     try{
-      const r=await rpc('crear_salida',{p_numero:num.value||'S/N',p_fecha:fecha.value,p_destino:dest.value,p_objetivo:Number(obj.value||0)});
+      const r=await rpc('crear_salida',{p_numero:num.value||'S/N',p_fecha:fiso,p_destino:dest.value,p_objetivo:Number(obj.value||0)});
       SALIDA={id:r.id,numero:num.value||'S/N',objetivo:Number(obj.value||0)};
       pintarSalida(zona); verHistSalidas();
     }catch(e){zona.innerHTML='';zona.append(el('div',{className:'aviso'},'Error: '+errMsg(e)));}
@@ -1164,6 +1167,33 @@ async function vUsuarios(cont){
 function hoyISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // Suma N días a una fecha 'YYYY-MM-DD' y devuelve 'YYYY-MM-DD'.
 function sumarDias(iso,n){ if(!iso) return ''; const p=String(iso).slice(0,10).split('-'); const d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2])); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+// Campo de fecha en formato DÍA/MES/AÑO (como se acostumbra en Argentina).
+// Devuelve un objeto {el, input, getISO}. getISO() da 'YYYY-MM-DD' o '' si está mal/vacío.
+const _MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function campoFecha(valorISO, opts){
+  opts=opts||{};
+  const inp=el('input',{placeholder:'DD/MM/AAAA (día/mes/año)',maxLength:10,inputmode:'numeric'});
+  if(valorISO===undefined && !opts.vacio) valorISO=hoyISO();
+  if(valorISO){ const p=String(valorISO).slice(0,10).split('-'); inp.value=p[2]+'/'+p[1]+'/'+p[0]; }
+  const prev=el('div',{className:'mut',style:'margin-top:.2rem;font-size:.85em'});
+  function getISO(){
+    const m=(inp.value||'').trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if(!m) return '';
+    let d=+m[1], mo=+m[2], y=+m[3]; if(y<100) y+=2000;
+    if(mo<1||mo>12||d<1||d>31) return '';
+    const dt=new Date(Date.UTC(y,mo-1,d));
+    if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==mo-1||dt.getUTCDate()!==d) return '';
+    return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  }
+  function upd(){ const s=getISO();
+    if(s){ const [y,mo,d]=s.split('-'); prev.textContent='→ '+(+d)+' de '+_MESES[+mo-1]+' de '+y; prev.style.color='#166534'; }
+    else if(!(inp.value||'').trim()){ prev.textContent=opts.vacio?'(sin filtro de fecha)':'Escribí DÍA/MES/AÑO'; prev.style.color=''; }
+    else { prev.textContent='⚠ Fecha inválida. Escribí DÍA/MES/AÑO, ej: 03/09/2026'; prev.style.color='#b91c1c'; }
+  }
+  inp.oninput=upd; upd();
+  const wrap=el('div',{}); wrap.append(inp,prev);
+  return {el:wrap, input:inp, getISO};
+}
 
 // Descarga un Excel con TODAS las caravanas (respaldo).
 async function exportarBackup(btn){
