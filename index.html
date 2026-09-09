@@ -448,13 +448,21 @@ function vGuia(cont){
         const tb=el('table');
         tb.append(el('thead',{},filaTH(['Fecha','N° guía','Origen','Categorías','Cantidad','Cargada',''])));
         const tbody=el('tbody');
+        const esAdmin = ROL==='admin';
         h.forEach(g=>{
+          const acc=el('div',{className:'fila',style:'gap:.3rem'});
+          if(esAdmin){
+            const bEd=el('button',{className:'sec'},'Editar fecha');
+            bEd.onclick=(e)=>{ e.stopPropagation(); editarFechaGuia(tr,g); };
+            acc.append(el('div',{style:'flex:0 0 auto'},bEd));
+          }
           const bDel=el('button',{className:'gris'},'Eliminar');
           bDel.onclick=async(e)=>{ e.stopPropagation();
             if(!confirm(`¿Eliminar el cierre "${g.numero}"? Las ${g.cantidad} caravanas vuelven a vírgenes.`))return;
             try{ await rpc('eliminar_guia',{p_guia_id:g.id}); verHistGuias(); }catch(err){alert(errMsg(err));}
           };
-          const tdb=el('td'); tdb.append(bDel);
+          acc.append(el('div',{style:'flex:0 0 auto'},bDel));
+          const tdb=el('td'); tdb.append(acc);
           const tr=el('tr',{style:'cursor:pointer'},td(g.fecha,'num'),td(g.numero),td(g.origen||'—'),td(g.categorias||'—'),td(g.cantidad,'num'),td(g.creada||'—'),tdb);
           tr.onclick=()=>detalleCaravanasEnFila(tr,'guia_id',g.id,7);
           tbody.append(tr);
@@ -866,6 +874,38 @@ async function abrirCaja(rotulo,tr){
 
   tdd.append(inner); trd.append(tdd);
   tr.parentNode.insertBefore(trd,tr.nextSibling);
+}
+
+// Editar la fecha de un cierre de guía (abre un mini-formulario debajo de la fila).
+function editarFechaGuia(tr, g){
+  const sig=tr.nextSibling;
+  if(sig && sig.__editfecha){ sig.remove(); return; }              // toggle
+  if(sig && sig.__detalle){ sig.remove(); }                        // cerrá el detalle si estaba abierto
+  const trd=el('tr'); trd.__editfecha=true;
+  const tdd=el('td'); tdd.colSpan=7;
+  const caja=el('div',{className:'tarjeta',style:'margin:.3rem 0;background:#fefce8;border-color:#fde047'});
+  caja.append(el('h3',{},'Corregir fecha del cierre '+(g.numero||'')));
+  caja.append(el('div',{className:'mut',style:'margin-bottom:.4rem'},
+    'Cambia la fecha de la guía y la fecha de activación de sus '+g.cantidad+' caravanas (recalcula 40 y 90 días).'));
+  const cf=campoFecha(g.fecha);
+  caja.append(el('label',{},'Nueva fecha'),cf.el);
+  const acc=el('div',{className:'fila',style:'margin-top:.6rem'});
+  const bG=el('button',{},'Guardar fecha'); const bC=el('button',{className:'gris'},'Cancelar');
+  acc.append(el('div',{style:'flex:0 0 auto'},bG),el('div',{style:'flex:0 0 auto'},bC),el('div'));
+  caja.append(acc);
+  bC.onclick=()=>trd.remove();
+  bG.onclick=async()=>{
+    const iso=cf.getISO();
+    if(!iso){ alert('Escribí la fecha como DÍA/MES/AÑO, ej: 03/09/2026.'); return; }
+    if(!confirm('¿Corregir la fecha del cierre a '+cf.input.value+'? Se van a actualizar las '+g.cantidad+' caravanas.')) return;
+    bG.disabled=true; bG.innerHTML='<span class="spin"></span>';
+    try{ const r=await rpc('editar_fecha_guia',{p_guia_id:g.id,p_fecha:iso});
+      alert('Fecha corregida a '+r.fecha+'. Se actualizaron '+r.actualizadas+' caravanas.');
+      irA('guia');
+    }catch(e){ alert('Error: '+errMsg(e)); bG.disabled=false; bG.textContent='Guardar fecha'; }
+  };
+  tdd.append(caja); trd.append(tdd);
+  tr.parentNode.insertBefore(trd, tr.nextSibling);
 }
 
 // Despliega debajo de una fila la grilla de caravanas de esa guía o salida.
