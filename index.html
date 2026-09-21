@@ -433,6 +433,56 @@ function vGuia(cont){
   t.append(acc);
   cont.append(t);
 
+  // --- Cierre con CARAVANAS ELECTRÓNICAS (Excel de números) ---
+  const te=el('div',{className:'tarjeta',style:'margin-top:1rem;border-color:#93c5fd'});
+  te.append(el('h3',{},'Caravanas electrónicas (subir Excel)'));
+  te.append(el('div',{className:'mut',style:'margin-bottom:.6rem'},
+    'Si los animales ya vienen con su caravana puesta, subí el Excel con los números y cerrá la guía con ESOS números (no toma vírgenes consecutivas). Las que ya tenés como vírgenes se activan; las nuevas de origen se dan de alta solas.'));
+  const feFile=el('input',{type:'file',accept:'.xlsx,.xls,.csv'});
+  const feCat=el('select'); CATS.forEach(c=>feCat.append(el('option',{value:c},c)));
+  const fila3=el('div',{className:'fila'});
+  fila3.append(el('div',{},el('label',{},'Excel de números'),feFile),
+               el('div',{},el('label',{},'Categoría del lote'),feCat));
+  te.append(fila3);
+  const feFecha=campoFecha();
+  const feOrigen=el('input',{placeholder:'De quién vienen'});
+  const feNum=el('input',{placeholder:'N° de guía (opcional)'});
+  const fila4=el('div',{className:'fila',style:'margin-top:.6rem'});
+  fila4.append(el('div',{},el('label',{},'Fecha de ingreso'),feFecha.el),
+               el('div',{},el('label',{},'Origen'),feOrigen),
+               el('div',{},el('label',{},'N° de guía'),feNum));
+  te.append(fila4);
+  let feNums=[];
+  const feInfo=el('div',{className:'mut',style:'margin-top:.5rem'}); te.append(feInfo);
+  feFile.onchange=async()=>{ try{ feNums=await numerosDeArchivo(feFile.files[0]); feInfo.textContent='Se leyeron '+feNums.length+' números del archivo.'; }catch(e){ feNums=[]; feInfo.textContent='No pude leer el archivo: '+errMsg(e); } };
+  const feAcc=el('div',{className:'fila',style:'margin-top:.8rem'});
+  const feB=el('button',{},'Cerrar guía con estas caravanas');
+  feAcc.append(el('div',{style:'flex:0 0 auto'},feB),el('div')); te.append(feAcc);
+  const feRes=el('div',{style:'margin-top:.6rem'}); te.append(feRes);
+  feB.onclick=async()=>{
+    feRes.innerHTML='';
+    if(!feNums.length){ feRes.append(el('div',{className:'aviso'},'Subí primero el Excel con los números.')); return; }
+    const fiso=feFecha.getISO(); if(!fiso){ feRes.append(el('div',{className:'aviso'},'Revisá la fecha (DÍA/MES/AÑO).')); return; }
+    if(!feOrigen.value.trim()){ feRes.append(el('div',{className:'aviso'},'Cargá el origen.')); return; }
+    if(!confirm('¿Cerrar la guía con '+feNums.length+' caravanas electrónicas ('+feCat.value+'), fecha '+feFecha.input.value+'?')) return;
+    feB.disabled=true; feB.innerHTML='<span class="spin"></span>';
+    try{
+      const r=await rpc('cargar_guia_electronicas',{p_numeros:feNums.join('\n'),p_categoria:feCat.value,p_fecha:fiso,p_origen:feOrigen.value,p_numero:feNum.value||'S/N',p_renspa:'',p_propietario:''});
+      const box=el('div',{className:'tarjeta'});
+      box.append(el('h3',{},'Guía cerrada ✔'),
+        el('div',{},'Total en el archivo: '+r.total),
+        el('div',{},'Activadas de tu stock: '+r.activadas_de_stock),
+        el('div',{},'Nuevas de origen (alta): '+r.creadas_nuevas),
+        (r.ya_estaban_activas>0)?el('div',{className:'aviso'},'Ya estaban activas (se saltearon): '+r.ya_estaban_activas):null,
+        el('div',{className:'mut'},'Quedan en '+r.lote_provisional+' · 40 días: '+r.fecha_40+' · 90 días: '+r.fecha_90));
+      feRes.append(box);
+      feNums=[]; feFile.value=''; feInfo.textContent='';
+      verHistGuias();
+    }catch(e){ feRes.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); }
+    feB.disabled=false; feB.textContent='Cerrar guía con estas caravanas';
+  };
+  cont.append(te);
+
   const salida=el('div'); cont.append(salida);
 
   const histBox=el('div',{style:'margin-top:1.2rem'}); cont.append(histBox);
