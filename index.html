@@ -69,6 +69,47 @@
   .spin{display:inline-block;width:15px;height:15px;border:2px solid #fff6;border-top-color:#fff;
         border-radius:50%;animation:g .7s linear infinite;vertical-align:-2px}
   @keyframes g{to{transform:rotate(360deg)}}
+  /* --- dashboard observador --- */
+  .dash h2{font-size:1.25rem}
+  .dash .sec{margin:1.2rem 0 .5rem;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);font-weight:700}
+  .dash .campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.9rem}
+  .dash .campo{background:#fff;border:1px solid var(--linea);border-radius:16px;padding:1rem 1.1rem}
+  .dash .campo h3{font-size:1.15rem;margin:0}
+  .dash .badge{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.04em;padding:.15em .55em;border-radius:6px;background:#eef2f8;color:var(--gris);vertical-align:middle;margin-left:.4rem}
+  .dash .big{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin:.7rem 0}
+  .dash .big div{background:#f7f9fc;border-radius:12px;padding:.7rem .8rem}
+  .dash .big .n{font-size:1.9rem;font-weight:800;line-height:1.05}
+  .dash .big .t{font-size:.78rem;color:var(--gris);margin-top:.25rem}
+  .dash table{font-size:.88rem}
+  .dash .tot{font-weight:800;background:#f7f9fc}
+  .dash .stockgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.9rem}
+  .dash .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem}
+  .dash .resumen div{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:.9rem 1rem}
+  .dash .resumen .n{font-size:1.7rem;font-weight:800;line-height:1.05}
+  .dash .resumen .t{font-size:.78rem;color:var(--gris);margin-top:.25rem}
+  .dash .pie{color:var(--gris);font-size:.8rem;margin-top:1.2rem}
+  /* --- celular --- */
+  @media(max-width:640px){
+    body{font-size:14px}
+    .top .in{flex-wrap:wrap;gap:.5rem;padding:.6rem .8rem}
+    .top .marca{font-size:1rem;width:100%}
+    #campoBox{margin-left:0!important;width:100%}
+    #campoBox select{flex:1;min-width:0!important}
+    #userLbl{font-size:.78rem;max-width:55vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    nav.menu{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 .3rem}
+    nav.menu a{padding:.55em .6em;font-size:.9rem}
+    main{padding:.8rem .7rem 3rem}
+    .tarjeta{padding:.9rem .8rem;border-radius:12px}
+    .kpis{grid-template-columns:repeat(2,1fr);gap:.6rem}
+    .kpi{padding:.75rem}
+    .kpi .n{font-size:1.55rem}
+    .fila > *{min-width:100%}
+    table{font-size:.82rem}
+    th,td{padding:.4em .35em}
+    .tablewrap{overflow-x:auto}
+    .dash .big .n{font-size:1.6rem}
+    .dash .campos,.dash .stockgrid{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
@@ -163,12 +204,13 @@ async function entrar(user){
   try{ const {data}=await sb.from('perfiles').select('rol,nombre').eq('id',user.id).single(); perfil=data; }catch(e){}
   ROL = (perfil&&perfil.rol)||'consulta';
   $('#userLbl').textContent = (perfil&&perfil.nombre)||user.email;
-  $('#rolLbl').textContent = ROL==='admin'?'· administrador':'· consulta';
+  $('#rolLbl').textContent = ROL==='admin'?'· administrador':'· observador';
   $('#login').classList.add('oculto');
   $('#app').classList.remove('oculto');
   await cargarCampos();
+  if(ROL!=='admin') $('#campoBox').style.display='none';   // el observador ve todos los campos juntos
   construirMenu();
-  irA('panel');
+  irA(ROL==='admin'?'panel':'dashboard');
 }
 
 // ---- Campos (establecimientos) ----
@@ -206,6 +248,7 @@ async function salir(){ await sb.auth.signOut(); location.reload(); }
 //  Menú y ruteo
 // ======================================================================
 const VISTAS = {
+  dashboard:{t:'Dashboard',  admin:false, obs:true, f:vDashboard},
   panel:    {t:'Panel',      admin:false, f:vPanel},
   consultar:{t:'Consultar',  admin:false, f:vConsultar},
   guia:     {t:'Cierre de guía', admin:true, f:vGuia},
@@ -219,6 +262,7 @@ let RUTA='panel';
 function construirMenu(){
   const m=$('#menu'); m.innerHTML='';
   for(const [k,v] of Object.entries(VISTAS)){
+    if(ROL!=='admin' && !v.obs) continue;      // observador: sólo el Dashboard
     if(v.admin && ROL!=='admin') continue;
     m.append(el('a',{onclick:()=>irA(k),id:'nav-'+k},v.t));
   }
@@ -227,7 +271,7 @@ function irA(k){
   RUTA=k;
   document.querySelectorAll('nav.menu a').forEach(a=>a.classList.remove('act'));
   const n=$('#nav-'+k); if(n)n.classList.add('act');
-  $('#vista').innerHTML='';
+  $('#vista').innerHTML=''; $('#vista').className='';
   VISTAS[k].f($('#vista'));
 }
 
@@ -455,6 +499,77 @@ function td(v,cls){return el('td',{className:cls||''},esc(v));}
 function tdChip(txt,cls){const t=el('td');t.append(el('span',{className:'chip '+cls},txt));return t;}
 
 // ======================================================================
+//  VISTA · DASHBOARD (observadores / dueños) — pensado para celular también
+// ======================================================================
+async function vDashboard(cont){
+  cont.className='dash';
+  const cab=el('div',{style:'display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap'});
+  cab.append(el('h2',{},'Resumen de campos'));
+  const upd=el('span',{className:'mut'},'Cargando…'); cab.append(upd);
+  cont.append(cab);
+  let d; try{ d=await rpc('dashboard_observador'); }catch(e){ upd.textContent='Error: '+errMsg(e); return; }
+  upd.textContent='Actualizado '+(d.generado||'');
+
+  // --- Caravanas por campo (cada campo por separado) ---
+  cont.append(el('div',{className:'sec'},'Caravanas — por campo'));
+  const g=el('div',{className:'campos'});
+  (d.caravanas||[]).forEach(c=>{
+    const box=el('div',{className:'campo'});
+    const h=el('h3',{},c.nombre); if(c.condicion) h.append(el('span',{className:'badge'},c.condicion));
+    box.append(h, el('div',{className:'mut'},c.propietario||''));
+    const big=el('div',{className:'big'});
+    const B=(n,t,col)=>{ const x=el('div'); x.append(el('div',{className:'n',style:'color:'+(col||'var(--tinta)')},fmt(n)),el('div',{className:'t'},t)); return x; };
+    big.append(B(c.activas,'Caravanas activas',PALETA[0]), B(c.activas_90,'Con 90 días cumplidos',PALETA[2]),
+               B(c.activas_40,'Con 40 días cumplidos',PALETA[3]), B(c.virgenes,'Vírgenes en stock'));
+    box.append(big);
+    const cats=(c.categorias||[]);
+    if(cats.length){
+      const tb=el('table'); tb.append(el('thead',{},filaTH(['Categoría','Activas'])));
+      const tbody=el('tbody'); cats.forEach(x=>tbody.append(el('tr',{},td(x.categoria),td(x.n,'num'))));
+      const tr=el('tr',{className:'tot'}); tr.append(td('Total activas'),td(c.activas,'num')); tbody.append(tr);
+      tb.append(tbody); box.append(tb);
+    }
+    box.append(el('div',{className:'mut',style:'margin-top:.5rem'},
+      (c.ultima_activacion?'Última activación: '+c.ultima_activacion+' · ':'')+'Bajas: '+fmt(c.bajas)));
+    g.append(box);
+  });
+  cont.append(g);
+
+  // --- Stock SENASA ---
+  cont.append(el('div',{className:'sec'},'Stock SENASA — por establecimiento'));
+  const res=el('div',{className:'resumen'});
+  const R=(n,t,col)=>{ const x=el('div'); x.append(el('div',{className:'n',style:'color:'+(col||'var(--tinta)')},fmt(n)),el('div',{className:'t'},t)); return x; };
+  res.append(R(d.stock_total,'Total en SENASA (todos)'));
+  (d.stock_por_titular||[]).forEach((t,i)=>{ const tit=(d.titulares||[]).find(x=>x.nombre===t.titular);
+    res.append(R(t.total,(t.titular||'—')+(tit&&tit.cuit?' · '+tit.cuit:''),PALETA[i%PALETA.length])); });
+  cont.append(res);
+  const sg=el('div',{className:'stockgrid',style:'margin-top:.9rem'});
+  (d.stock||[]).forEach(c=>{
+    const box=el('div',{className:'campo'});
+    const h=el('h3',{},c.campo); if(c.condicion) h.append(el('span',{className:'badge'},c.condicion));
+    box.append(h);
+    const its=c.items||[];
+    if(!its.length){ box.append(el('div',{className:'mut'},'Sin stock cargado.')); sg.append(box); return; }
+    // tabla: filas = categorías, columnas = titulares (+ total)
+    const tits=[...new Set(its.map(i=>i.titular))];
+    const cats=[...new Set(its.map(i=>i.categoria))];
+    const wrap=el('div',{className:'tablewrap'});
+    const tb=el('table'); tb.append(el('thead',{},filaTH(['Categoría',...tits.map(t=>t||'—'),'Total'])));
+    const tbody=el('tbody');
+    const val=(t,cat)=>{ const it=its.find(i=>i.titular===t&&i.categoria===cat); return it?it.cantidad:0; };
+    cats.forEach(cat=>{ const tr=el('tr'); tr.append(td(cat)); let s=0; tits.forEach(t=>{ const v=val(t,cat); s+=v; tr.append(td(v,'num')); }); tr.append(td(s,'num')); tbody.append(tr); });
+    const trT=el('tr',{className:'tot'}); trT.append(td('Total'));
+    tits.forEach(t=>trT.append(td(its.filter(i=>i.titular===t).reduce((a,b)=>a+b.cantidad,0),'num')));
+    trT.append(td(c.total,'num')); tbody.append(trT);
+    tb.append(tbody); wrap.append(tb); box.append(wrap);
+    if(c.ultima) box.append(el('div',{className:'mut',style:'margin-top:.4rem'},'Actualizado: '+c.ultima));
+    sg.append(box);
+  });
+  cont.append(sg);
+  cont.append(el('div',{className:'pie'},'El stock SENASA se carga manualmente'+(d.stock_ultima?' (última actualización '+d.stock_ultima+')':'')+'. Las caravanas se actualizan en tiempo real desde el sistema.'));
+}
+
+// ======================================================================
 //  VISTA · STOCK SENASA (manual, por campo; los dueños lo ven)
 // ======================================================================
 async function vStock(cont){
@@ -470,46 +585,51 @@ async function vStock(cont){
     const grid=el('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:.8rem'});
     data.forEach(c=>{
       const box=el('div',{className:'tarjeta',style:'margin:0'});
-      box.append(el('h3',{style:'margin-bottom:.1rem'},c.campo),
+      box.append(el('h3',{style:'margin-bottom:.1rem'},c.campo+(c.condicion?'  ·  '+c.condicion:'')),
                  el('div',{className:'mut',style:'margin-bottom:.5rem'},(c.propietario||'')+(c.ultima?'  ·  última actualización: '+c.ultima:'')));
       const tb=el('table');
-      tb.append(el('thead',{},filaTH(ROL==='admin'?['Categoría','Cantidad','Actualizado','']:['Categoría','Cantidad','Actualizado'])));
+      tb.append(el('thead',{},filaTH(ROL==='admin'?['Titular','Categoría','Cantidad','Actualizado','']:['Titular','Categoría','Cantidad','Actualizado'])));
       const tbody=el('tbody');
       const its=c.items||[];
-      if(!its.length) tbody.append(el('tr',{},el('td',{colSpan:4,className:'mut'},'Sin categorías cargadas todavía.')));
+      if(!its.length) tbody.append(el('tr',{},el('td',{colSpan:5,className:'mut'},'Sin categorías cargadas todavía.')));
+      let titAnt=null;
       its.forEach(it=>{
         const tr=el('tr');
+        const tdTit=td(it.titular===titAnt?'':(it.titular||'—')); if(it.titular!==titAnt){ tdTit.style.fontWeight='700'; } titAnt=it.titular;
         if(ROL==='admin'){
-          const inp=el('input',{type:'number',min:'0',value:it.cantidad,style:'width:7rem;text-align:right'});
+          const inp=el('input',{type:'number',min:'0',value:it.cantidad,style:'width:6.5rem;text-align:right'});
           const bG=el('button',{className:'sec',style:'padding:.25rem .6rem'},'Guardar');
           const bX=el('button',{className:'gris',style:'padding:.25rem .6rem;margin-left:.3rem'},'✕');
           bG.onclick=async()=>{ const n=Number(inp.value); if(!(n>=0)){alert('Poné un número (0 o más).');return;}
-            bG.disabled=true; try{ await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:it.categoria,p_cantidad:n}); pintar(); }
+            bG.disabled=true; try{ await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:it.categoria,p_cantidad:n,p_titular:it.titular||''}); pintar(); }
             catch(e){ alert('Error: '+errMsg(e)); bG.disabled=false; } };
-          bX.onclick=async()=>{ if(!confirm('¿Borrar la categoría «'+it.categoria+'» de '+c.campo+'?'))return;
-            try{ await rpc('stock_senasa_borrar',{p_campo_id:c.campo_id,p_categoria:it.categoria}); pintar(); }catch(e){ alert('Error: '+errMsg(e)); } };
+          bX.onclick=async()=>{ if(!confirm('¿Borrar «'+(it.titular?it.titular+' · ':'')+it.categoria+'» de '+c.campo+'?'))return;
+            try{ await rpc('stock_senasa_borrar',{p_campo_id:c.campo_id,p_categoria:it.categoria,p_titular:it.titular||''}); pintar(); }catch(e){ alert('Error: '+errMsg(e)); } };
           inp.onkeydown=(e)=>{ if(e.key==='Enter') bG.click(); };
           const tdi=el('td'); tdi.append(inp); const tda=el('td'); tda.append(bG,bX);
-          tr.append(td(it.categoria),tdi,td(it.actualizado||'—','num'),tda);
+          tr.append(tdTit,td(it.categoria),tdi,td(it.actualizado||'—','num'),tda);
         }else{
-          tr.append(td(it.categoria),td(it.cantidad,'num'),td(it.actualizado||'—','num'));
+          tr.append(tdTit,td(it.categoria),td(it.cantidad,'num'),td(it.actualizado||'—','num'));
         }
         tbody.append(tr);
       });
+      (c.por_titular||[]).forEach(t=>{ const trS=el('tr',{style:'font-weight:600;background:#fbfcfe'});
+        trS.append(td('Subtotal '+(t.titular||'—')),td(''),td(t.total,'num'),td('')); if(ROL==='admin') trS.append(td('')); tbody.append(trS); });
       const trT=el('tr',{style:'font-weight:700;background:#f8fafc'});
-      trT.append(td('TOTAL'),td(c.total,'num'),td('')); if(ROL==='admin') trT.append(td(''));
+      trT.append(td('TOTAL '+c.campo),td(''),td(c.total,'num'),td('')); if(ROL==='admin') trT.append(td(''));
       tbody.append(trT);
-      tb.append(tbody); box.append(tb);
+      tb.append(tbody); const wrap=el('div',{className:'tablewrap'}); wrap.append(tb); box.append(wrap);
       if(ROL==='admin'){
         const f=el('div',{className:'fila',style:'margin-top:.6rem;align-items:end'});
-        const nCat=el('input',{placeholder:'Nueva categoría (ej: VACAS)'});
+        const nTit=el('select'); [['','(sin titular)'],['GUIPUZCOA','GUIPUZCOA'],['SUC. DE ITURRIOZ','SUC. DE ITURRIOZ']].forEach(([v,t])=>nTit.append(el('option',{value:v},t)));
+        const nCat=el('input',{placeholder:'Categoría (ej: HEMBRA)'});
         const nCant=el('input',{type:'number',min:'0',placeholder:'Cantidad'});
         const bA=el('button',{},'Agregar');
         bA.onclick=async()=>{ if(!nCat.value.trim()){alert('Escribí la categoría.');return;}
           const n=Number(nCant.value||0); bA.disabled=true;
-          try{ await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:nCat.value,p_cantidad:n,p_orden:its.length+1}); pintar(); }
+          try{ await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:nCat.value,p_cantidad:n,p_orden:its.length+1,p_titular:nTit.value}); pintar(); }
           catch(e){ alert('Error: '+errMsg(e)); bA.disabled=false; } };
-        f.append(el('div',{},el('label',{},'Categoría'),nCat),el('div',{},el('label',{},'Cantidad'),nCant),el('div',{style:'flex:0 0 auto'},bA));
+        f.append(el('div',{},el('label',{},'Titular'),nTit),el('div',{},el('label',{},'Categoría'),nCat),el('div',{},el('label',{},'Cantidad'),nCant),el('div',{style:'flex:0 0 auto'},bA));
         box.append(f);
       }
       // historial (desplegable)
@@ -1394,7 +1514,7 @@ async function vUsuarios(cont){
     tb.append(el('thead',{},filaTH(['Usuario','Rol','Activo',''])));
     const tbody=el('tbody');
     (data||[]).forEach(u=>{
-      const sel=el('select');['consulta','admin'].forEach(r=>sel.append(el('option',{value:r,selected:u.rol===r},r)));
+      const sel=el('select');[['consulta','observador (sólo Dashboard)'],['admin','administrador']].forEach(([r,t])=>sel.append(el('option',{value:r,selected:u.rol===r},t)));
       const b=el('button',{className:'sec'},'Guardar');
       b.onclick=async()=>{try{await rpc('set_rol',{p_uid:u.id,p_rol:sel.value,p_activo:true});b.textContent='✔';setTimeout(()=>b.textContent='Guardar',1200);}catch(e){alert(errMsg(e));}};
       tbody.append(el('tr',{},td(u.nombre||u.id),el('td',{},sel),td(u.activo?'Sí':'No'),el('td',{},b)));
