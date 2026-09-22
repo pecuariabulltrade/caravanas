@@ -562,7 +562,22 @@ function vGuia(cont){
 }
 function previstaBox(p){
   const box=el('div',{className:'tarjeta'});
-  box.append(el('h3',{},'Prevista — así van a quedar'));
+  const cab=el('div',{style:'display:flex;align-items:center;gap:.8rem;flex-wrap:wrap'});
+  cab.append(el('h3',{style:'margin:0'},'Prevista — así van a quedar'));
+  const bCopiar=el('button',{className:'gris',style:'flex:0 0 auto'},'Copiar caravanas (con 0 adelante)');
+  bCopiar.onclick=async()=>{
+    const nums=numerosPrevista(p);
+    if(!nums.length){ alert('No hay caravanas para copiar.'); return; }
+    const texto=nums.join('\n');
+    try{
+      if(navigator.clipboard&&window.isSecureContext){ await navigator.clipboard.writeText(texto); }
+      else{ const ta=document.createElement('textarea'); ta.value=texto; ta.style.position='fixed'; ta.style.opacity='0';
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      const orig=bCopiar.textContent; bCopiar.textContent=`Copiadas ${nums.length} ✔`;
+      setTimeout(()=>{ bCopiar.textContent=orig; },2500);
+    }catch(e){ alert('No se pudo copiar: '+errMsg(e)); }
+  };
+  cab.append(bCopiar); box.append(cab);
   box.append(el('div',{className:'mut',style:'margin-bottom:.5rem'},
     `Pedidas ${p.total_pedido} · tomaría ${p.total_tomaria}`+(p.faltan>0?` · faltan ${p.faltan} vírgenes`:'')+` · vírgenes disponibles ${p.disponibles}`));
   box.append(tablaGrupos(p.resumen,'tomaria'));
@@ -588,6 +603,24 @@ function previstaBox(p){
     actualizar();
   }
   return box;
+}
+// Números de la prevista con el cero adelante (15 dígitos), uno por línea.
+// Si la prevista vino truncada (>500), reconstruye cada grupo desde→hasta cuando es un rango consecutivo.
+function con0(n){ n=String(n||'').trim(); return /^\d+$/.test(n) ? n.padStart(15,'0') : n; }
+function numerosPrevista(p){
+  const filas=(p.filas||[]);
+  if(!p.truncado) return filas.map(f=>con0(f.numero));
+  const out=[];
+  for(const g of (p.resumen||[])){
+    const d=String(g.desde||''), h=String(g.hasta||''), n=Number(g.tomaria||0);
+    if(/^\d+$/.test(d)&&/^\d+$/.test(h)&&n>0&&(BigInt(h)-BigInt(d)+1n)===BigInt(n)){
+      for(let x=BigInt(d);x<=BigInt(h);x++) out.push(con0(x.toString()));
+    } else {
+      alert(`El grupo ${g.categoria} no es un rango consecutivo y la prevista está limitada a 500 filas: se copian solo las que se ven.`);
+      return filas.map(f=>con0(f.numero));
+    }
+  }
+  return out;
 }
 function tablaGrupos(gr,campo){
   const tb=el('table');
