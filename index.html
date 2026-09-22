@@ -6,8 +6,9 @@
 <title>Gestión de Caravanas</title>
 <style>
   :root{
-    --azul:#2a78d6; --naranja:#eb6834; --verde:#1baf7a; --amar:#eda100; --rosa:#e87ba4;
-    --tinta:#1d2430; --gris:#5b6672; --linea:#e3e8ef; --fondo:#f4f6fa; --tarjeta:#fff;
+    /* paleta campera: verde monte, pasto, ocre/trigo, cuero, teja, crema */
+    --azul:#3f6b3a; --naranja:#bc4749; --verde:#6a994e; --amar:#c9932b; --rosa:#8c6a4a;
+    --tinta:#2e2a24; --gris:#6e665b; --linea:#e4dccb; --fondo:#f4efe4; --tarjeta:#fffdf9; --suave:#f3eee2;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
@@ -16,8 +17,8 @@
   a{color:var(--azul)}
   button{font:inherit;cursor:pointer;border:0;border-radius:9px;padding:.55em 1em;
          background:var(--azul);color:#fff;font-weight:600}
-  button.sec{background:#eef2f8;color:var(--tinta)}
-  button.gris{background:#e7ebf1;color:var(--tinta)}
+  button.sec{background:#ece6d8;color:var(--tinta)}
+  button.gris{background:#e3dccd;color:var(--tinta)}
   button:disabled{opacity:.5;cursor:default}
   input,select,textarea{font:inherit;padding:.5em .6em;border:1px solid var(--linea);
          border-radius:8px;background:#fff;width:100%}
@@ -27,15 +28,15 @@
   .tarjeta{background:var(--tarjeta);border:1px solid var(--linea);border-radius:14px;
            padding:1.1rem 1.2rem;margin-bottom:1rem}
   .chip{display:inline-block;padding:.15em .6em;border-radius:20px;font-size:.78rem;font-weight:700}
-  .ok{background:#e4f6ee;color:#0c7a52}
-  .warn{background:#fdeee4;color:#b8560f}
+  .ok{background:#e6efdc;color:#2f5a2a}
+  .warn{background:#f6e3d3;color:#8a4a12}
   .mut{color:var(--gris);font-size:.86rem}
   table{border-collapse:collapse;width:100%;font-size:.9rem}
   th,td{text-align:left;padding:.45em .5em;border-bottom:1px solid var(--linea)}
   th{color:var(--gris);font-size:.78rem;text-transform:uppercase;letter-spacing:.03em}
   .num{font-variant-numeric:tabular-nums}
   /* --- layout --- */
-  header.top{background:#fff;border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
+  header.top{background:var(--tarjeta);border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:5}
   .top .in{max-width:1080px;margin:auto;display:flex;align-items:center;gap:1rem;padding:.7rem 1rem}
   .top .marca{font-weight:800;font-size:1.05rem}
   .top .marca small{color:var(--gris);font-weight:600}
@@ -47,7 +48,7 @@
   .oculto{display:none!important}
   /* --- panel --- */
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem}
-  .kpi{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:1rem}
+  .kpi{background:var(--tarjeta);border:1px solid var(--linea);border-radius:14px;padding:1rem}
   .kpi .n{font-size:2rem;font-weight:800;line-height:1}
   .kpi .t{color:var(--gris);font-size:.85rem;margin-top:.3rem}
   .panelgrid{display:grid;grid-template-columns:1fr;gap:1rem}
@@ -57,14 +58,14 @@
   .leyenda .pt{width:13px;height:13px;border-radius:4px;flex:0 0 auto}
   .donutwrap{display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap}
   /* --- login --- */
-  #login{position:fixed;inset:0;background:linear-gradient(160deg,#eaf1fb,#f4f6fa);
+  #login{position:fixed;inset:0;background:linear-gradient(160deg,#e9e2d0,#f4efe4);
          display:flex;align-items:center;justify-content:center;z-index:50}
-  #login .caja{background:#fff;border:1px solid var(--linea);border-radius:18px;padding:2rem;
+  #login .caja{background:var(--tarjeta);border:1px solid var(--linea);border-radius:18px;padding:2rem;
                width:min(380px,92vw);box-shadow:0 20px 50px rgba(20,40,80,.12)}
   .msg{padding:.6em .8em;border-radius:9px;margin:.6rem 0;font-size:.9rem;display:none}
   .msg.e{background:#fdecec;color:#b12626;display:block}
   .msg.k{background:#e4f6ee;color:#0c7a52;display:block}
-  .aviso{background:#fff8e8;border:1px solid #f0dfb0;border-radius:10px;padding:.7em .9em;
+  .aviso{background:#fbf3df;border:1px solid #e6d3a3;border-radius:10px;padding:.7em .9em;
          font-size:.86rem;color:#6a5312;margin:.5rem 0}
   .spin{display:inline-block;width:15px;height:15px;border:2px solid #fff6;border-top-color:#fff;
         border-radius:50%;animation:g .7s linear infinite;vertical-align:-2px}
@@ -73,18 +74,18 @@
   .dash h2{font-size:1.25rem}
   .dash .sec{margin:1.2rem 0 .5rem;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--gris);font-weight:700}
   .dash .campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.9rem}
-  .dash .campo{background:#fff;border:1px solid var(--linea);border-radius:16px;padding:1rem 1.1rem}
+  .dash .campo{background:var(--tarjeta);border:1px solid var(--linea);border-radius:16px;padding:1rem 1.1rem}
   .dash .campo h3{font-size:1.15rem;margin:0}
-  .dash .badge{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.04em;padding:.15em .55em;border-radius:6px;background:#eef2f8;color:var(--gris);vertical-align:middle;margin-left:.4rem}
+  .dash .badge{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.04em;padding:.15em .55em;border-radius:6px;background:#ebe4d3;color:var(--gris);vertical-align:middle;margin-left:.4rem}
   .dash .big{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;margin:.7rem 0}
-  .dash .big div{background:#f7f9fc;border-radius:12px;padding:.7rem .8rem}
+  .dash .big div{background:var(--suave);border-radius:12px;padding:.7rem .8rem}
   .dash .big .n{font-size:1.9rem;font-weight:800;line-height:1.05}
   .dash .big .t{font-size:.78rem;color:var(--gris);margin-top:.25rem}
   .dash table{font-size:.88rem}
-  .dash .tot{font-weight:800;background:#f7f9fc}
+  .dash .tot{font-weight:800;background:var(--suave)}
   .dash .stockgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:.9rem}
   .dash .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem}
-  .dash .resumen div{background:#fff;border:1px solid var(--linea);border-radius:14px;padding:.9rem 1rem}
+  .dash .resumen div{background:var(--tarjeta);border:1px solid var(--linea);border-radius:14px;padding:.9rem 1rem}
   .dash .resumen .n{font-size:1.7rem;font-weight:800;line-height:1.05}
   .dash .resumen .t{font-size:.78rem;color:var(--gris);margin-top:.25rem}
   .dash .pie{color:var(--gris);font-size:.8rem;margin-top:1.2rem}
@@ -154,7 +155,7 @@
 // ======================================================================
 //  Conexión
 // ======================================================================
-const PALETA = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#8a5cf6'];
+const PALETA = ['#3f6b3a','#bc4749','#c9932b','#6a994e','#8c6a4a','#a7c957'];
 let sb, USUARIO=null, ROL='consulta';
 // Campo (establecimiento) activo: {id, nombre, propietario}
 let CAMPO={id:1,nombre:'',propietario:''}, CAMPOS=[];
@@ -312,117 +313,111 @@ function donut(datos, tam=170){
 async function vPanel(cont){
   cont.append(el('h2',{},'Panel'));
   const cargando=el('div',{className:'mut'},'Cargando…'); cont.append(cargando);
-  let p;
+  let p, todos=[];
   try{ p=await rpc('panel'); }catch(e){ cargando.textContent='Error: '+errMsg(e); return; }
+  try{ const t=await rpc('panel_todos'); todos=(t&&t.campos)||[]; }catch(e){}
   cargando.remove();
+  const mio = todos.find(c=>c.id===CAMPO.id) || {};
+  const comp=(p.composicion||[]).filter(x=>x.n>0);
+  const activas = comp.reduce((a,x)=>a+x.n,0);
 
-  // --- Resumen de cada campo, lado a lado (NO se suman) ---
-  try{
-    const t=await rpc('panel_todos');
-    if(t && (t.campos||[]).length>1){
-      const grid=el('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:.8rem;margin-bottom:1rem'});
-      const mini=(n,l,c)=>{ const k=el('div',{className:'kpi'}); k.append(el('div',{className:'n',style:'color:'+(c||'var(--tinta)')},fmt(n)),el('div',{className:'t'},l)); return k; };
-      (t.campos||[]).forEach(c=>{
-        const esAct=c.id===CAMPO.id;
-        const box=el('div',{className:'tarjeta',style:'margin:0;'+(esAct?'border-color:#2a78d6;background:#f5f9ff':'')});
-        box.append(el('h3',{style:'margin-bottom:.1rem'},c.nombre+(esAct?'  ·  (viendo)':'')),
-                   el('div',{className:'mut',style:'margin-bottom:.5rem'},c.propietario||''));
-        const kp=el('div',{className:'kpis'});
-        kp.append(mini(c.activas,'Activas',PALETA[0]),mini(c.activas_90,'Con 90 días',PALETA[2]),
-                  mini(c.virgenes,'Vírgenes',PALETA[3]),mini(c.bajas,'Bajas',PALETA[1]),mini(c.total,'Total'));
-        box.append(kp);
-        const cats=(c.categorias||[]);
-        if(cats.length){
-          const tb=el('table',{style:'margin-top:.5rem'}); tb.append(el('thead',{},filaTH(['Categoría (activas)','Cantidad'])));
-          const tbody=el('tbody'); cats.forEach(x=>tbody.append(el('tr',{},td(x.categoria),td(x.n,'num'))));
-          tb.append(tbody); box.append(tb);
-        } else box.append(el('div',{className:'mut',style:'margin-top:.5rem'},'Sin caravanas activas todavía.'));
-        if(!esAct){ const b=el('button',{className:'sec',style:'margin-top:.5rem'},'Trabajar en '+c.nombre);
-          b.onclick=async()=>{ const sel=$('#campoSel'); sel.value=String(c.id); sel.onchange(); };
-          box.append(b); }
-        grid.append(box);
-      });
-      cont.append(grid);
-    }
-  }catch(e){ /* sin multi-campo todavía: se muestra sólo el panel del campo */ }
-  cont.append(el('h3',{style:'margin:.4rem 0 .6rem'},'Campo: '+(CAMPO.nombre||'')+(CAMPO.propietario?' · '+CAMPO.propietario:'')));
+  // encabezado del campo actual
+  const cab=el('div',{style:'display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap;margin:.2rem 0 .7rem'});
+  cab.append(el('h3',{style:'margin:0;font-size:1.2rem'},CAMPO.nombre||''));
+  if(mio.condicion) cab.append(el('span',{className:'chip',style:'background:#ebe4d3;color:var(--gris)'},mio.condicion));
+  if(CAMPO.propietario) cab.append(el('span',{className:'mut'},CAMPO.propietario));
+  cont.append(cab);
 
-  const tarjeta=(n,t,color,onClick)=>{
+  const tarjeta=(n,t,color,onClick,hint)=>{
     const k=el('div',{className:'kpi'});
     k.append(el('div',{className:'n',style:`color:${color||'var(--tinta)'}`},fmt(n)),el('div',{className:'t'},t));
     if(onClick){ k.style.cursor='pointer';
-      k.append(el('div',{className:'mut',style:'font-size:.72rem;margin-top:.3rem'},'tocá para ver ▾'));
+      k.append(el('div',{className:'mut',style:'font-size:.72rem;margin-top:.3rem'},hint||'tocá para ver ▾'));
       k.onclick=onClick; }
     return k;
   };
+  const det=el('div',{style:'margin:.3rem 0 1rem'});
+  let abierto=null;
+  const toggle=(clave, render)=>{ if(abierto===clave){ det.innerHTML=''; abierto=null; return; } abierto=clave; render(); };
 
-  // --- render del detalle de una tarjeta ---
-  async function cargarDet(cont, tipo, cat, titulo){
-    cont.innerHTML=''; const load=el('div',{className:'mut'},'Cargando…'); cont.append(load);
+  // --- detalle: torta de composición (al tocar "activas") ---
+  function verComposicion(){
+    det.innerHTML='';
+    const box=el('div',{className:'tarjeta'});
+    box.append(el('h3',{},'Composición del rodeo activo — por categoría'));
+    if(!comp.length){ box.append(el('div',{className:'mut'},'Sin caravanas activas.')); det.append(box); return; }
+    const wrap=el('div',{className:'donutwrap'});
+    wrap.append(donut(comp));
+    const leg=el('div',{className:'leyenda'});
+    const tot=activas||1;
+    const sub=el('div',{style:'margin-top:.6rem'});
+    comp.forEach((x,i)=>{
+      const it=el('div',{className:'it',style:'cursor:pointer'});
+      it.append(el('span',{className:'pt',style:`background:${PALETA[i%PALETA.length]}`}),
+                el('span',{},`${x.nombre}: `), el('strong',{},fmt(x.n)),
+                el('span',{className:'mut'},` (${Math.round(x.n/tot*100)}%) · ver fechas ▸`));
+      it.onclick=()=>cargarDet(sub,'edad',x.nombre,'');
+      leg.append(it);
+    });
+    wrap.append(leg); box.append(wrap, sub); det.append(box);
+  }
+  // --- detalle genérico (90 días / vírgenes / edad) ---
+  async function cargarDet(c, tipo, cat, titulo){
+    c.innerHTML=''; const load=el('div',{className:'mut'},'Cargando…'); c.append(load);
     let d; try{ d=await rpc('panel_detalle',{p_tipo:tipo,p_categoria:cat||''}); }
-    catch(e){ cont.innerHTML=''; cont.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); return; }
-    cont.innerHTML='';
+    catch(e){ c.innerHTML=''; c.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); return; }
+    c.innerHTML='';
     const box=el('div',{className:'tarjeta'});
     if(d.tipo==='cat'){
-      box.append(el('h3',{},titulo));
+      box.append(el('h3',{},titulo), el('div',{className:'mut',style:'margin-bottom:.4rem'},'Tocá una categoría para ver la primera y la última activación.'));
       const tb=el('table'); tb.append(el('thead',{},filaTH(['Categoría','Cantidad'])));
-      const tbody=el('tbody'); (d.items||[]).forEach(x=>tbody.append(el('tr',{},td(x.categoria),el('td',{className:'num'},fmt(x.n)))));
-      tb.append(tbody); box.append(tb);
+      const tbody=el('tbody'); const sub=el('div',{style:'margin-top:.5rem'});
+      (d.items||[]).forEach(x=>{ const tr=el('tr',{style:'cursor:pointer'},td(x.categoria),el('td',{className:'num'},fmt(x.n)));
+        tr.onclick=()=>cargarDet(sub,'edad',x.categoria,''); tbody.append(tr); });
+      tb.append(tbody); box.append(tb, sub);
     }else if(d.tipo==='rangos'){
       box.append(el('h3',{},'Vírgenes por tanda de numeración'));
       const tb=el('table'); tb.append(el('thead',{},filaTH(['Desde','Hasta','Cantidad'])));
       const tbody=el('tbody'); (d.items||[]).forEach(x=>tbody.append(el('tr',{},td(x.desde,'num'),td(x.hasta,'num'),el('td',{className:'num'},fmt(x.cantidad)))));
       tb.append(tbody); box.append(tb);
-      if(d.no_num>0) box.append(el('div',{className:'mut',style:'margin-top:.3rem'},`+ ${d.no_num} vírgenes con numeración vieja (letras)`));
+      if(d.no_num>0) box.append(el('div',{className:'mut',style:'margin-top:.3rem'},`+ ${d.no_num} vírgenes con numeración con letras`));
       if(!(d.items||[]).length && !d.no_num) box.append(el('div',{className:'mut'},'No hay vírgenes en stock.'));
     }else if(d.tipo==='edad'){
       box.append(el('h3',{},`${d.categoria} activas: ${fmt(d.cantidad)}`),
         el('div',{},`Primera activación (la más vieja): ${d.primera||'—'}`),
         el('div',{},`Última activación (la más nueva): ${d.ultima||'—'}`));
     }else{ box.append(el('div',{className:'mut'},'Sin datos.')); }
-    cont.append(box);
+    c.append(box);
   }
 
+  // --- 4 tarjetas del campo actual (sin repetir, sin total histórico) ---
   const kpis=el('div',{className:'kpis'});
-  const detTop=el('div',{style:'margin:.3rem 0 1rem'});
   kpis.append(
-    tarjeta(p.activas_90_total,'Activas con 90 días cumplidos','var(--verde)',
-            ()=>cargarDet(detTop,'cat90','','Categorías con 90 días cumplidos')),
-    tarjeta(p.virgenes,'Caravanas vírgenes (en stock)','var(--azul)',
-            ()=>cargarDet(detTop,'virgenes','','')),
-    tarjeta(p.total,'Total de caravanas (histórico)',null,
-            ()=>cargarDet(detTop,'total','','Composición total (histórico)')),
+    tarjeta(activas,'Caravanas activas','var(--azul)',()=>toggle('comp',verComposicion),'tocá para ver la composición ▾'),
+    tarjeta(p.activas_90_total,'Con 90 días cumplidos','var(--verde)',()=>toggle('c90',()=>cargarDet(det,'cat90','','Con 90 días cumplidos, por categoría'))),
+    tarjeta(mio.activas_40!=null?mio.activas_40:'—','Con 40 días cumplidos','var(--amar)'),
+    tarjeta(p.virgenes,'Vírgenes en stock','var(--rosa)',()=>toggle('vir',()=>cargarDet(det,'virgenes','','')))
   );
-  cont.append(kpis, detTop);
+  cont.append(kpis, det);
 
-  // desglose 90 días
-  const d90=el('div',{className:'tarjeta'});
-  d90.append(el('h3',{},'Con 90 días cumplidos, por categoría'));
-  const detCat=el('div',{style:'margin-top:.6rem'});
-  const f=el('div',{className:'kpis'});
-  f.append(tarjeta(p.activas_90_vaca,'Vaca','var(--azul)',()=>cargarDet(detCat,'edad','Vaca','')),
-           tarjeta(p.activas_90_hembra,'Hembra','var(--rosa)',()=>cargarDet(detCat,'edad','Hembra','')),
-           tarjeta(p.activas_90_macho,'Macho','var(--naranja)',()=>cargarDet(detCat,'edad','Macho','')));
-  d90.append(f, detCat); cont.append(d90);
-
-  // composición del rodeo activo (donut)
-  const comp=(p.composicion||[]).filter(x=>x.n>0);
-  if(comp.length){
+  // --- otros campos (resumen chico, sin repetir el actual) ---
+  const otros=todos.filter(c=>c.id!==CAMPO.id);
+  if(otros.length){
     const box=el('div',{className:'tarjeta'});
-    box.append(el('h3',{},'Composición del rodeo activo'));
-    const wrap=el('div',{className:'donutwrap'});
-    wrap.append(donut(comp));
-    const leg=el('div',{className:'leyenda'});
-    const tot=comp.reduce((a,x)=>a+x.n,0)||1;
-    comp.forEach((x,i)=>{
-      const it=el('div',{className:'it'});
-      it.append(el('span',{className:'pt',style:`background:${PALETA[i%PALETA.length]}`}),
-                el('span',{},`${x.nombre}: `),
-                el('strong',{},fmt(x.n)),
-                el('span',{className:'mut'},` (${Math.round(x.n/tot*100)}%)`));
-      leg.append(it);
+    box.append(el('h3',{},'Otros campos'));
+    const grid=el('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.8rem'});
+    otros.forEach(c=>{
+      const k=el('div',{style:'background:var(--suave);border-radius:12px;padding:.8rem .9rem'});
+      const h=el('div',{style:'font-weight:800;font-size:1.05rem'},c.nombre); if(c.condicion) h.append(el('span',{className:'chip',style:'background:#ebe4d3;color:var(--gris);margin-left:.4rem'},c.condicion));
+      k.append(h, el('div',{className:'mut',style:'margin-bottom:.4rem'},c.propietario||''));
+      const cats=(c.categorias||[]).map(x=>x.categoria+' '+fmt(x.n)).join(' · ');
+      k.append(el('div',{},el('b',{},fmt(c.activas)),' activas · ',el('b',{},fmt(c.activas_90)),' con 90 días · ',el('b',{},fmt(c.virgenes)),' vírgenes'));
+      if(cats) k.append(el('div',{className:'mut',style:'margin-top:.2rem'},cats));
+      const b=el('button',{className:'sec',style:'margin-top:.6rem'},'Trabajar en '+c.nombre);
+      b.onclick=()=>{ const sel=$('#campoSel'); sel.value=String(c.id); sel.onchange(); };
+      k.append(b); grid.append(k);
     });
-    wrap.append(leg); box.append(wrap); cont.append(box);
+    box.append(grid); cont.append(box);
   }
 }
 
@@ -518,17 +513,22 @@ async function vDashboard(cont){
     const h=el('h3',{},c.nombre); if(c.condicion) h.append(el('span',{className:'badge'},c.condicion));
     box.append(h, el('div',{className:'mut'},c.propietario||''));
     const big=el('div',{className:'big'});
-    const B=(n,t,col)=>{ const x=el('div'); x.append(el('div',{className:'n',style:'color:'+(col||'var(--tinta)')},fmt(n)),el('div',{className:'t'},t)); return x; };
-    big.append(B(c.activas,'Caravanas activas',PALETA[0]), B(c.activas_90,'Con 90 días cumplidos',PALETA[2]),
-               B(c.activas_40,'Con 40 días cumplidos',PALETA[3]), B(c.virgenes,'Vírgenes en stock'));
-    box.append(big);
-    const cats=(c.categorias||[]);
-    if(cats.length){
-      const tb=el('table'); tb.append(el('thead',{},filaTH(['Categoría','Activas'])));
-      const tbody=el('tbody'); cats.forEach(x=>tbody.append(el('tr',{},td(x.categoria),td(x.n,'num'))));
-      const tr=el('tr',{className:'tot'}); tr.append(td('Total activas'),td(c.activas,'num')); tbody.append(tr);
-      tb.append(tbody); box.append(tb);
-    }
+    const B=(n,t,col,onClick,hint)=>{ const x=el('div'); x.append(el('div',{className:'n',style:'color:'+(col||'var(--tinta)')},fmt(n)),el('div',{className:'t'},t));
+      if(onClick){ x.style.cursor='pointer'; x.append(el('div',{className:'t',style:'font-size:.7rem;margin-top:.15rem'},hint||'tocá para ver ▾')); x.onclick=onClick; } return x; };
+    const detalle=el('div');
+    const cats=(c.categorias||[]).map(x=>({nombre:x.categoria,n:x.n})).filter(x=>x.n>0);
+    let abierta=false;
+    const verTorta=()=>{ detalle.innerHTML=''; if(abierta){ abierta=false; return; } abierta=true;
+      if(!cats.length){ detalle.append(el('div',{className:'mut'},'Sin caravanas activas.')); return; }
+      const wrap=el('div',{className:'donutwrap',style:'margin:.4rem 0 .2rem'}); wrap.append(donut(cats,150));
+      const leg=el('div',{className:'leyenda'}); const tot=c.activas||1;
+      cats.forEach((x,i)=>{ const it=el('div',{className:'it'});
+        it.append(el('span',{className:'pt',style:'background:'+PALETA[i%PALETA.length]}),el('span',{},x.nombre+': '),el('strong',{},fmt(x.n)),el('span',{className:'mut'},' ('+Math.round(x.n/tot*100)+'%)'));
+        leg.append(it); });
+      wrap.append(leg); detalle.append(wrap); };
+    big.append(B(c.activas,'Caravanas activas',PALETA[0],verTorta,'tocá para ver por categoría ▾'), B(c.activas_90,'Con 90 días cumplidos',PALETA[3]),
+               B(c.activas_40,'Con 40 días cumplidos',PALETA[2]), B(c.virgenes,'Vírgenes en stock'));
+    box.append(big, detalle);
     box.append(el('div',{className:'mut',style:'margin-top:.5rem'},
       (c.ultima_activacion?'Última activación: '+c.ultima_activacion+' · ':'')+'Bajas: '+fmt(c.bajas)));
     g.append(box);
@@ -575,72 +575,78 @@ async function vDashboard(cont){
 async function vStock(cont){
   cont.append(el('h2',{},'Stock SENASA'));
   cont.append(el('div',{className:'mut',style:'margin-bottom:.7rem'},
-    'Stock que figura en SENASA por campo y categoría. Se carga a mano (hasta tener la API de SENASA). '
-    +(ROL==='admin'?'Para actualizar: cambiá el número y tocá Guardar.':'Sólo lectura.')));
+    'Stock que figura en SENASA por establecimiento, titular y categoría. Se carga a mano hasta tener la API. '
+    +(ROL==='admin'?'Cambiá los números y tocá "Guardar cambios" en cada campo.':'Sólo lectura.')));
   const zona=el('div'); cont.append(zona);
+  const TITS=['GUIPUZCOA','SUC. DE ITURRIOZ'];
   async function pintar(){
     zona.innerHTML='';
     let data; try{ data=(await rpc('stock_senasa_listar'))||[]; }
     catch(e){ zona.append(el('div',{className:'aviso'},'No pude leer el stock: '+errMsg(e))); return; }
-    const grid=el('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:.8rem'});
+    const grid=el('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:.9rem;align-items:start'});
     data.forEach(c=>{
       const box=el('div',{className:'tarjeta',style:'margin:0'});
-      box.append(el('h3',{style:'margin-bottom:.1rem'},c.campo+(c.condicion?'  ·  '+c.condicion:'')),
-                 el('div',{className:'mut',style:'margin-bottom:.5rem'},(c.propietario||'')+(c.ultima?'  ·  última actualización: '+c.ultima:'')));
-      const tb=el('table');
-      tb.append(el('thead',{},filaTH(ROL==='admin'?['Titular','Categoría','Cantidad','Actualizado','']:['Titular','Categoría','Cantidad','Actualizado'])));
-      const tbody=el('tbody');
+      const h=el('h3',{style:'margin-bottom:.1rem'},c.campo); if(c.condicion) h.append(el('span',{className:'chip',style:'background:#ebe4d3;color:var(--gris);margin-left:.4rem'},c.condicion));
+      box.append(h, el('div',{className:'mut',style:'margin-bottom:.5rem'},(c.propietario||'')+(c.ultima?'  ·  actualizado '+c.ultima:'')));
       const its=c.items||[];
-      if(!its.length) tbody.append(el('tr',{},el('td',{colSpan:5,className:'mut'},'Sin categorías cargadas todavía.')));
-      let titAnt=null;
-      its.forEach(it=>{
-        const tr=el('tr');
-        const tdTit=td(it.titular===titAnt?'':(it.titular||'—')); if(it.titular!==titAnt){ tdTit.style.fontWeight='700'; } titAnt=it.titular;
-        if(ROL==='admin'){
-          const inp=el('input',{type:'number',min:'0',value:it.cantidad,style:'width:6.5rem;text-align:right'});
-          const bG=el('button',{className:'sec',style:'padding:.25rem .6rem'},'Guardar');
-          const bX=el('button',{className:'gris',style:'padding:.25rem .6rem;margin-left:.3rem'},'✕');
-          bG.onclick=async()=>{ const n=Number(inp.value); if(!(n>=0)){alert('Poné un número (0 o más).');return;}
-            bG.disabled=true; try{ await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:it.categoria,p_cantidad:n,p_titular:it.titular||''}); pintar(); }
-            catch(e){ alert('Error: '+errMsg(e)); bG.disabled=false; } };
-          bX.onclick=async()=>{ if(!confirm('¿Borrar «'+(it.titular?it.titular+' · ':'')+it.categoria+'» de '+c.campo+'?'))return;
-            try{ await rpc('stock_senasa_borrar',{p_campo_id:c.campo_id,p_categoria:it.categoria,p_titular:it.titular||''}); pintar(); }catch(e){ alert('Error: '+errMsg(e)); } };
-          inp.onkeydown=(e)=>{ if(e.key==='Enter') bG.click(); };
-          const tdi=el('td'); tdi.append(inp); const tda=el('td'); tda.append(bG,bX);
-          tr.append(tdTit,td(it.categoria),tdi,td(it.actualizado||'—','num'),tda);
-        }else{
-          tr.append(tdTit,td(it.categoria),td(it.cantidad,'num'),td(it.actualizado||'—','num'));
-        }
-        tbody.append(tr);
-      });
-      (c.por_titular||[]).forEach(t=>{ const trS=el('tr',{style:'font-weight:600;background:#fbfcfe'});
-        trS.append(td('Subtotal '+(t.titular||'—')),td(''),td(t.total,'num'),td('')); if(ROL==='admin') trS.append(td('')); tbody.append(trS); });
-      const trT=el('tr',{style:'font-weight:700;background:#f8fafc'});
-      trT.append(td('TOTAL '+c.campo),td(''),td(c.total,'num'),td('')); if(ROL==='admin') trT.append(td(''));
-      tbody.append(trT);
-      tb.append(tbody); const wrap=el('div',{className:'tablewrap'}); wrap.append(tb); box.append(wrap);
+      const tits=[...new Set([...its.map(i=>i.titular).filter(Boolean), ...(its.length?[]:[])])];
+      const cols = tits.length?tits:(ROL==='admin'?TITS:[]);
+      const cats=[...new Set(its.map(i=>i.categoria))];
+      const val=(t,cat)=>{ const it=its.find(i=>i.titular===t&&i.categoria===cat); return it?it.cantidad:0; };
+      const cambios=new Map();   // clave "titular|cat" -> nuevo valor
+      let bG=null;
+      const wrap=el('div',{className:'tablewrap'});
+      const tb=el('table',{style:'table-layout:fixed'});
+      tb.append(el('thead',{},filaTH(['Categoría',...cols,'Total',...(ROL==='admin'?['']:[])])));
+      const tbody=el('tbody');
+      const filaTotal=(cat)=>cols.reduce((a,t)=>a+(cambios.has(t+'|'+cat)?cambios.get(t+'|'+cat):val(t,cat)),0);
+      const rows={};
+      const pintarFila=(cat)=>{
+        const tr=el('tr'); tr.append(td(cat));
+        cols.forEach(t=>{
+          if(ROL==='admin'){
+            const inp=el('input',{type:'number',min:'0',value:val(t,cat),style:'width:100%;max-width:6rem;text-align:right;padding:.3em .4em'});
+            inp.oninput=()=>{ cambios.set(t+'|'+cat, Number(inp.value||0)); rows[cat].tot.textContent=fmt(filaTotal(cat)); tr.style.background='#fbf3df'; bG.disabled=false; };
+            const c1=el('td'); c1.append(inp); tr.append(c1);
+          } else tr.append(td(val(t,cat),'num'));
+        });
+        const tot=el('td',{className:'num',style:'font-weight:700'},fmt(filaTotal(cat))); tr.append(tot);
+        if(ROL==='admin'){ const bX=el('button',{className:'gris',style:'padding:.2rem .5rem',title:'Borrar categoría'},'✕');
+          bX.onclick=async()=>{ if(!confirm('¿Borrar «'+cat+'» de '+c.campo+' (todos los titulares)?'))return;
+            try{ for(const t of cols) await rpc('stock_senasa_borrar',{p_campo_id:c.campo_id,p_categoria:cat,p_titular:t}); pintar(); }catch(e){ alert('Error: '+errMsg(e)); } };
+          const cx=el('td'); cx.append(bX); tr.append(cx); }
+        rows[cat]={tr,tot}; tbody.append(tr);
+      };
+      cats.forEach(pintarFila);
+      if(!cats.length) tbody.append(el('tr',{},el('td',{colSpan:cols.length+2,className:'mut'},'Sin stock cargado.')));
+      const trT=el('tr',{style:'font-weight:800;background:var(--suave)'}); trT.append(td('Total'));
+      const totCols=cols.map(t=>{ const x=el('td',{className:'num'},fmt(its.filter(i=>i.titular===t).reduce((a,b)=>a+b.cantidad,0))); trT.append(x); return x; });
+      const totGen=el('td',{className:'num'},fmt(c.total)); trT.append(totGen); if(ROL==='admin') trT.append(td(''));
+      tbody.append(trT); tb.append(tbody); wrap.append(tb); box.append(wrap);
+
       if(ROL==='admin'){
-        const f=el('div',{className:'fila',style:'margin-top:.6rem;align-items:end'});
-        const nTit=el('select'); [['','(sin titular)'],['GUIPUZCOA','GUIPUZCOA'],['SUC. DE ITURRIOZ','SUC. DE ITURRIOZ']].forEach(([v,t])=>nTit.append(el('option',{value:v},t)));
-        const nCat=el('input',{placeholder:'Categoría (ej: HEMBRA)'});
-        const nCant=el('input',{type:'number',min:'0',placeholder:'Cantidad'});
-        const bA=el('button',{},'Agregar');
-        bA.onclick=async()=>{ if(!nCat.value.trim()){alert('Escribí la categoría.');return;}
-          const n=Number(nCant.value||0); bA.disabled=true;
-          try{ await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:nCat.value,p_cantidad:n,p_orden:its.length+1,p_titular:nTit.value}); pintar(); }
+        const acc=el('div',{className:'fila',style:'margin-top:.6rem;align-items:end'});
+        bG=el('button',{},'Guardar cambios'); bG.disabled=true;
+        bG.onclick=async()=>{ if(!cambios.size)return; bG.disabled=true; bG.innerHTML='<span class="spin"></span>';
+          try{ for(const [k,v] of cambios){ const [t,cat]=k.split('|'); await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:cat,p_cantidad:v,p_titular:t}); }
+            pintar(); }catch(e){ alert('Error: '+errMsg(e)); bG.disabled=false; bG.textContent='Guardar cambios'; } };
+        const nCat=el('input',{placeholder:'Nueva categoría (ej: TERNERO)'});
+        const bA=el('button',{className:'sec'},'+ Categoría');
+        bA.onclick=async()=>{ const cat=nCat.value.trim().toUpperCase(); if(!cat){alert('Escribí la categoría.');return;}
+          bA.disabled=true; try{ for(const t of cols) await rpc('stock_senasa_guardar',{p_campo_id:c.campo_id,p_categoria:cat,p_cantidad:0,p_orden:cats.length+1,p_titular:t}); pintar(); }
           catch(e){ alert('Error: '+errMsg(e)); bA.disabled=false; } };
-        f.append(el('div',{},el('label',{},'Titular'),nTit),el('div',{},el('label',{},'Categoría'),nCat),el('div',{},el('label',{},'Cantidad'),nCant),el('div',{style:'flex:0 0 auto'},bA));
-        box.append(f);
+        acc.append(el('div',{style:'flex:0 0 auto'},bG), el('div',{},nCat), el('div',{style:'flex:0 0 auto'},bA));
+        box.append(acc);
       }
-      // historial (desplegable)
-      const hLink=el('a',{style:'cursor:pointer;font-weight:600;display:inline-block;margin-top:.5rem'},'▼ Ver historial de cambios');
+      // historial
+      const hLink=el('a',{style:'cursor:pointer;font-weight:600;display:inline-block;margin-top:.5rem;font-size:.85rem'},'▼ Historial de cambios');
       const hBox=el('div',{className:'oculto',style:'margin-top:.4rem'});
-      hLink.onclick=async()=>{ if(!hBox.classList.contains('oculto')){hBox.classList.add('oculto');hLink.textContent='▼ Ver historial de cambios';return;}
+      hLink.onclick=async()=>{ if(!hBox.classList.contains('oculto')){hBox.classList.add('oculto');hLink.textContent='▼ Historial de cambios';return;}
         hBox.innerHTML=''; try{ const h=(await rpc('stock_senasa_historial',{p_campo_id:c.campo_id,p_limite:50}))||[];
           if(!h.length) hBox.append(el('div',{className:'mut'},'Sin cambios registrados.'));
-          else{ const t2=el('table'); t2.append(el('thead',{},filaTH(['Fecha','Categoría','Anterior','Nuevo','Quién'])));
+          else{ const t2=el('table'); t2.append(el('thead',{},filaTH(['Fecha','Titular · categoría','Antes','Después','Quién'])));
             const b2=el('tbody'); h.forEach(x=>b2.append(el('tr',{},td(x.fecha,'num'),td(x.categoria),td(x.anterior==null?'—':x.anterior,'num'),td(x.cantidad,'num'),td(x.usuario||'—'))));
-            t2.append(b2); hBox.append(t2); }
+            t2.append(b2); const w2=el('div',{className:'tablewrap'}); w2.append(t2); hBox.append(w2); }
         }catch(e){ hBox.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); }
         hBox.classList.remove('oculto'); hLink.textContent='▲ Ocultar historial'; };
       box.append(hLink,hBox);
