@@ -440,9 +440,15 @@ function vGuia(cont){
     'Si los animales ya vienen con su caravana puesta, subí el Excel con los números y cerrá la guía con ESOS números (no toma vírgenes consecutivas). Las que ya tenés como vírgenes se activan; las nuevas de origen se dan de alta solas.'));
   const feFile=el('input',{type:'file',accept:'.xlsx,.xls,.csv'});
   const feCat=el('select'); CATS.forEach(c=>feCat.append(el('option',{value:c},c)));
+  // Destino: quedan en CLASIFICAR (para armar cajas) o van directo a la caja FEEDLOT
+  // (animales que ya vienen con la caravana puesta y no se clasifican).
+  const feDest=el('select');
+  [['CLASIFICAR','CLASIFICAR (hay que clasificarlas)'],['FEEDLOT','FEEDLOT (ya vienen puestas, van directo)']]
+    .forEach(([v,tx])=>feDest.append(el('option',{value:v},tx)));
   const fila3=el('div',{className:'fila'});
   fila3.append(el('div',{},el('label',{},'Excel de números'),feFile),
-               el('div',{},el('label',{},'Categoría del lote'),feCat));
+               el('div',{},el('label',{},'Categoría del lote'),feCat),
+               el('div',{},el('label',{},'Destino'),feDest));
   te.append(fila3);
   const feFecha=campoFecha();
   const feOrigen=el('input',{placeholder:'De quién vienen'});
@@ -464,17 +470,33 @@ function vGuia(cont){
     if(!feNums.length){ feRes.append(el('div',{className:'aviso'},'Subí primero el Excel con los números.')); return; }
     const fiso=feFecha.getISO(); if(!fiso){ feRes.append(el('div',{className:'aviso'},'Revisá la fecha (DÍA/MES/AÑO).')); return; }
     if(!feOrigen.value.trim()){ feRes.append(el('div',{className:'aviso'},'Cargá el origen.')); return; }
-    if(!confirm('¿Cerrar la guía con '+feNums.length+' caravanas electrónicas ('+feCat.value+'), fecha '+feFecha.input.value+'?')) return;
+    const dest=feDest.value;
+    const txtDest = dest==='FEEDLOT' ? ' → van directo a FEEDLOT' : ' → quedan en CLASIFICAR';
+    if(!confirm('¿Cerrar la guía con '+feNums.length+' caravanas electrónicas ('+feCat.value+'), fecha '+feFecha.input.value+txtDest+'?')) return;
     feB.disabled=true; feB.innerHTML='<span class="spin"></span>';
     try{
-      const r=await rpc('cargar_guia_electronicas',{p_numeros:feNums.join('\n'),p_categoria:feCat.value,p_fecha:fiso,p_origen:feOrigen.value,p_numero:feNum.value||'S/N',p_renspa:'',p_propietario:''});
+      const nums=feNums.slice();
+      const r=await rpc('cargar_guia_electronicas',{p_numeros:nums.join('\n'),p_categoria:feCat.value,p_fecha:fiso,p_origen:feOrigen.value,p_numero:feNum.value||'S/N',p_renspa:'',p_propietario:''});
+      // Si van directo a FEEDLOT, las paso de CLASIFICAR a la caja FEEDLOT con los mismos números.
+      let lote=r.lote_provisional, feedlotMsg=null;
+      if(dest==='FEEDLOT'){
+        try{
+          const a=await rpc('asignar_lote',{p_rotulo:'FEEDLOT',p_desde_lote:'CLASIFICAR',p_estado_filtro:'activa',p_categoria:'',p_texto:nums.join('\n')});
+          lote='FEEDLOT';
+          feedlotMsg=el('div',{},'Pasadas a FEEDLOT: '+a.asignadas);
+          if(a.asignadas<nums.length) feedlotMsg=el('div',{className:'aviso'},'Pasadas a FEEDLOT: '+a.asignadas+' de '+nums.length+' (las demás quedaron en CLASIFICAR; revisá en Lotes).');
+        }catch(e){
+          feedlotMsg=el('div',{className:'aviso'},'La guía se cerró pero no pude pasarlas a FEEDLOT: '+errMsg(e)+'. Quedaron en CLASIFICAR; podés rotularlas desde Lotes.');
+        }
+      }
       const box=el('div',{className:'tarjeta'});
       box.append(el('h3',{},'Guía cerrada ✔'),
         el('div',{},'Total en el archivo: '+r.total),
         el('div',{},'Activadas de tu stock: '+r.activadas_de_stock),
-        el('div',{},'Nuevas de origen (alta): '+r.creadas_nuevas),
-        (r.ya_estaban_activas>0)?el('div',{className:'aviso'},'Ya estaban activas (se saltearon): '+r.ya_estaban_activas):null,
-        el('div',{className:'mut'},'Quedan en '+r.lote_provisional+' · 40 días: '+r.fecha_40+' · 90 días: '+r.fecha_90));
+        el('div',{},'Nuevas de origen (alta): '+r.creadas_nuevas));
+      if(r.ya_estaban_activas>0) box.append(el('div',{className:'aviso'},'Ya estaban activas (se saltearon): '+r.ya_estaban_activas));
+      if(feedlotMsg) box.append(feedlotMsg);
+      box.append(el('div',{className:'mut'},'Quedan en '+lote+' · 40 días: '+r.fecha_40+' · 90 días: '+r.fecha_90));
       feRes.append(box);
       feNums=[]; feFile.value=''; feInfo.textContent='';
       verHistGuias();
