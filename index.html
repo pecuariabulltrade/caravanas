@@ -279,7 +279,7 @@ function irA(k){
 // ======================================================================
 //  Donut SVG (sin librerías)
 // ======================================================================
-function donut(datos, tam=170){
+function donut(datos, tam=170, etiqueta='activas'){
   const total = datos.reduce((a,d)=>a+d.n,0)||1;
   const r=tam/2, ir=r*0.60, cx=r, cy=r; let ang=-Math.PI/2;
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -302,7 +302,7 @@ function donut(datos, tam=170){
   t.textContent=fmt(total);
   const t2=document.createElementNS('http://www.w3.org/2000/svg','text');
   t2.setAttribute('x',cx);t2.setAttribute('y',cy+16);t2.setAttribute('text-anchor','middle');
-  t2.setAttribute('font-size','11');t2.setAttribute('fill','#5b6672');t2.textContent='activas';
+  t2.setAttribute('font-size','11');t2.setAttribute('fill','#6e665b');t2.textContent=etiqueta;
   svg.append(t,t2);
   return svg;
 }
@@ -340,18 +340,19 @@ async function vPanel(cont){
   let abierto=null;
   const toggle=(clave, render)=>{ if(abierto===clave){ det.innerHTML=''; abierto=null; return; } abierto=clave; render(); };
 
-  // --- detalle: torta de composición (al tocar "activas") ---
-  function verComposicion(){
+  // --- detalle: torta por categoría (activas / 90 días / 40 días) ---
+  function pintarTorta(titulo, datos, etiqueta){
     det.innerHTML='';
     const box=el('div',{className:'tarjeta'});
-    box.append(el('h3',{},'Composición del rodeo activo — por categoría'));
-    if(!comp.length){ box.append(el('div',{className:'mut'},'Sin caravanas activas.')); det.append(box); return; }
+    box.append(el('h3',{},titulo));
+    const items=(datos||[]).filter(x=>x.n>0);
+    if(!items.length){ box.append(el('div',{className:'mut'},'Sin caravanas en este grupo.')); det.append(box); return; }
     const wrap=el('div',{className:'donutwrap'});
-    wrap.append(donut(comp));
+    wrap.append(donut(items,170,etiqueta||'activas'));
     const leg=el('div',{className:'leyenda'});
-    const tot=activas||1;
+    const tot=items.reduce((a,x)=>a+x.n,0)||1;
     const sub=el('div',{style:'margin-top:.6rem'});
-    comp.forEach((x,i)=>{
+    items.forEach((x,i)=>{
       const it=el('div',{className:'it',style:'cursor:pointer'});
       it.append(el('span',{className:'pt',style:`background:${PALETA[i%PALETA.length]}`}),
                 el('span',{},`${x.nombre}: `), el('strong',{},fmt(x.n)),
@@ -360,6 +361,13 @@ async function vPanel(cont){
       leg.append(it);
     });
     wrap.append(leg); box.append(wrap, sub); det.append(box);
+  }
+  function verComposicion(){ pintarTorta('Composición del rodeo activo — por categoría', comp); }
+  async function verTortaPlazo(tipo, titulo, etiqueta){
+    det.innerHTML=''; det.append(el('div',{className:'mut'},'Cargando…'));
+    try{ const d=await rpc('panel_detalle',{p_tipo:tipo,p_categoria:''});
+      pintarTorta(titulo, (d.items||[]).map(x=>({nombre:x.categoria,n:x.n})), etiqueta);
+    }catch(e){ det.innerHTML=''; det.append(el('div',{className:'aviso'},'Error: '+errMsg(e))); }
   }
   // --- detalle genérico (90 días / vírgenes / edad) ---
   async function cargarDet(c, tipo, cat, titulo){
@@ -394,8 +402,8 @@ async function vPanel(cont){
   const kpis=el('div',{className:'kpis'});
   kpis.append(
     tarjeta(activas,'Caravanas activas','var(--azul)',()=>toggle('comp',verComposicion),'tocá para ver la composición ▾'),
-    tarjeta(p.activas_90_total,'Con 90 días cumplidos','var(--verde)',()=>toggle('c90',()=>cargarDet(det,'cat90','','Con 90 días cumplidos, por categoría'))),
-    tarjeta(mio.activas_40!=null?mio.activas_40:'—','Con 40 días cumplidos','var(--amar)'),
+    tarjeta(p.activas_90_total,'Con 90 días cumplidos','var(--verde)',()=>toggle('c90',()=>verTortaPlazo('cat90','Con 90 días cumplidos — por categoría','con 90 días')),'tocá para ver por categoría ▾'),
+    tarjeta(mio.activas_40!=null?mio.activas_40:'—','Con 40 días cumplidos','var(--amar)',()=>toggle('c40',()=>verTortaPlazo('cat40','Con 40 días cumplidos — por categoría','con 40 días')),'tocá para ver por categoría ▾'),
     tarjeta(p.virgenes,'Vírgenes en stock','var(--rosa)',()=>toggle('vir',()=>cargarDet(det,'virgenes','','')))
   );
   cont.append(kpis, det);
@@ -516,18 +524,23 @@ async function vDashboard(cont){
     const B=(n,t,col,onClick,hint)=>{ const x=el('div'); x.append(el('div',{className:'n',style:'color:'+(col||'var(--tinta)')},fmt(n)),el('div',{className:'t'},t));
       if(onClick){ x.style.cursor='pointer'; x.append(el('div',{className:'t',style:'font-size:.7rem;margin-top:.15rem'},hint||'tocá para ver ▾')); x.onclick=onClick; } return x; };
     const detalle=el('div');
-    const cats=(c.categorias||[]).map(x=>({nombre:x.categoria,n:x.n})).filter(x=>x.n>0);
-    let abierta=false;
-    const verTorta=()=>{ detalle.innerHTML=''; if(abierta){ abierta=false; return; } abierta=true;
-      if(!cats.length){ detalle.append(el('div',{className:'mut'},'Sin caravanas activas.')); return; }
-      const wrap=el('div',{className:'donutwrap',style:'margin:.4rem 0 .2rem'}); wrap.append(donut(cats,150));
-      const leg=el('div',{className:'leyenda'}); const tot=c.activas||1;
+    let abiertaClave=null;
+    const torta=(clave, titulo, lista, etiqueta)=>{
+      if(abiertaClave===clave){ detalle.innerHTML=''; abiertaClave=null; return; }
+      abiertaClave=clave; detalle.innerHTML='';
+      const cats=(lista||[]).map(x=>({nombre:x.categoria,n:x.n})).filter(x=>x.n>0);
+      detalle.append(el('div',{className:'mut',style:'margin-top:.3rem;font-weight:700'},titulo));
+      if(!cats.length){ detalle.append(el('div',{className:'mut'},'Sin caravanas en este grupo.')); return; }
+      const wrap=el('div',{className:'donutwrap',style:'margin:.4rem 0 .2rem'}); wrap.append(donut(cats,150,etiqueta||'activas'));
+      const leg=el('div',{className:'leyenda'}); const tot=cats.reduce((a,x)=>a+x.n,0)||1;
       cats.forEach((x,i)=>{ const it=el('div',{className:'it'});
         it.append(el('span',{className:'pt',style:'background:'+PALETA[i%PALETA.length]}),el('span',{},x.nombre+': '),el('strong',{},fmt(x.n)),el('span',{className:'mut'},' ('+Math.round(x.n/tot*100)+'%)'));
         leg.append(it); });
       wrap.append(leg); detalle.append(wrap); };
-    big.append(B(c.activas,'Caravanas activas',PALETA[0],verTorta,'tocá para ver por categoría ▾'), B(c.activas_90,'Con 90 días cumplidos',PALETA[3]),
-               B(c.activas_40,'Con 40 días cumplidos',PALETA[2]), B(c.virgenes,'Vírgenes en stock'));
+    big.append(B(c.activas,'Caravanas activas',PALETA[0],()=>torta('act','Activas — por categoría',c.categorias),'tocá para ver por categoría ▾'),
+               B(c.activas_90,'Con 90 días cumplidos',PALETA[3],()=>torta('c90','Con 90 días — por categoría',c.categorias_90,'con 90 días'),'tocá para ver por categoría ▾'),
+               B(c.activas_40,'Con 40 días cumplidos',PALETA[2],()=>torta('c40','Con 40 días — por categoría',c.categorias_40,'con 40 días'),'tocá para ver por categoría ▾'),
+               B(c.virgenes,'Vírgenes en stock'));
     box.append(big, detalle);
     box.append(el('div',{className:'mut',style:'margin-top:.5rem'},
       (c.ultima_activacion?'Última activación: '+c.ultima_activacion+' · ':'')+'Bajas: '+fmt(c.bajas)));
